@@ -1,14 +1,14 @@
-== Readme ==
+# Readme
 
 This program is a linux fork of ArDrone Controller available at http://miniapps.free.fr/ArDroneController.php?lg=fr
 
 It's based on CVDrone (https://github.com/puku0x/cvdrone)
 
-== Status == 
+# Status 
 
 Not working…
 
-== Licence ==
+# Licence
 
 CVDrone have LGPL/BSD Licence.
 
@@ -16,7 +16,7 @@ ArDrone Controller dont specify any licence
 
 If it's possible, I want to use GPL-based licence for this port.
 
-== Original readme ==
+# Original readme
 
 Note to developpers:
 
