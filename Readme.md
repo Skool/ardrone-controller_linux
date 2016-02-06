@@ -1,3 +1,23 @@
+== Readme ==
+
+This program is a linux fork of ArDrone Controller available at http://miniapps.free.fr/ArDroneController.php?lg=fr
+
+It's based on CVDrone (https://github.com/puku0x/cvdrone)
+
+== Status == 
+
+Not working…
+
+== Licence ==
+
+CVDrone have LGPL/BSD Licence.
+
+ArDrone Controller dont specify any licence
+
+If it's possible, I want to use GPL-based licence for this port.
+
+== Original readme ==
+
 Note to developpers:
 
 This application uses wxWidget as framework for the GUI (see http://www.wxwidgets.org/).
