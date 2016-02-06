@@ -1,0 +1,45 @@
+/////////////////////////////////////////////////////////////////////////////
+// Ressources
+/////////////////////////////////////////////////////////////////////////////
+
+// note that the icon used by the Explorer (i.e. the programs icon) is the
+// first icon in the executable and the icons are sorted both by their order
+// (Win9x) and by alphabetically (!) (NT), so put this icon first and give it
+// a name starting with "a"
+aaaaaaaa			ICON	"Ressources/Main.ico"
+
+// Define our main icon
+IcoMain				ICON	"Ressources/Main.ico"
+// Other icons
+IcoConnect			ICON	"Ressources/DroneConnect.ico"
+IcoDisconnect		ICON	"Ressources/DroneDisconnect.ico"
+IcoEmergency		ICON	"Ressources/DroneEmergency.ico"
+IcoTrim				ICON	"Ressources/DroneTrim.ico"
+IcoTakeOff			ICON	"Ressources/DroneTakeOff.ico"
+IcoRecord			ICON	"Ressources/DroneRecord.ico"
+IcoScreenshot		ICON	"Ressources/DroneScreenshot.ico"
+IcoFullscreen		ICON	"Ressources/DroneFullscreen.ico"
+IcoCamera			ICON	"Ressources/DroneCamera.ico"
+IcoHome				ICON	"Ressources/DroneHome.ico"
+IcoHomeReset		ICON	"Ressources/DroneHomeReset.ico"
+
+// Sound files
+WavBeep				WAVE	"Ressources/Beep.wav"
+WavBeeps			WAVE	"Ressources/Beeps.wav"
+
+// PNG files used as overlay
+PngWifiGreen		RCDATA	"Ressources/WifiGreen.png"
+PngWifiYellow		RCDATA	"Ressources/WifiYellow.png"
+PngWifiOrange		RCDATA	"Ressources/WifiOrange.png"
+PngWifiRed			RCDATA	"Ressources/WifiRed.png"
+PngBatteryGreen		RCDATA	"Ressources/BatteryGreen.png"
+PngBatteryYellow	RCDATA	"Ressources/BatteryYellow.png"
+PngBatteryOrange	RCDATA	"Ressources/BatteryOrange.png"
+PngBatteryRed		RCDATA	"Ressources/BatteryRed.png"
+PngRecord			RCDATA	"Ressources/Record.png"
+PngHome				RCDATA	"Ressources/Home.png"
+
+// set this to 1 if you don't want to use manifest resource (manifest resource
+// is needed to enable visual styles on Windows XP - see docs/msw/winxp.txt
+// for more information)
+#define wxUSE_NO_MANIFEST 0

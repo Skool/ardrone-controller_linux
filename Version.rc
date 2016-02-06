@@ -1,0 +1,32 @@
+1 VERSIONINFO
+FILEVERSION 1,6,0,0
+PRODUCTVERSION 1,6,0,0
+FILEFLAGSMASK 0x3fL
+#ifdef _DEBUG
+  FILEFLAGS 0x1L
+#else
+  FILEFLAGS 0x0L
+#endif
+FILEOS 0x4L
+FILETYPE 0x1L
+FILESUBTYPE 0x0L
+BEGIN
+   BLOCK "StringFileInfo"
+   BEGIN
+      BLOCK "080904e4"
+      BEGIN
+         VALUE "CompanyName", "MiniApps"
+         VALUE "LegalCopyright", "(c) 2015 by Patrick Christmann"
+         VALUE "FileDescription", "Control your ArDrone from pc"
+         VALUE "FileVersion", "1.6.0"
+         VALUE "InternalName", "ArDrone controller"
+         VALUE "OriginalFilename", "ArDroneController.exe"
+         VALUE "ProductName", "ArDrone controller"
+         VALUE "ProductVersion", "1.6.0"
+      END
+   END
+   BLOCK "VarFileInfo"
+   BEGIN
+      VALUE "Translation", 0x809, 1252
+   END
+END
