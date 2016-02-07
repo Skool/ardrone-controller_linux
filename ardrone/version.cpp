@@ -1,6 +1,6 @@
 // -------------------------------------------------------------------------
 // CV Drone (= OpenCV + AR.Drone)
-// Copyright(C) 2013 puku0x
+// Copyright(C) 2016 puku0x
 // https://github.com/puku0x/cvdrone
 //
 // This source file is part of CV Drone library.
@@ -19,73 +19,75 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the files
 // cvdrone-license-LGPL.txt and cvdrone-license-BSD.txt for more details.
+//
+//! @file   version.cpp
+//! @brief  Version check using FTP
+//
 // -------------------------------------------------------------------------
 
 #include "ardrone.h"
 
 // --------------------------------------------------------------------------
-// ARDrone::getVersionInfo()
-// Description  : Get version information.
-// Return value : SUCCESS: 1  FAILURE: 0
+//! @brief   Get the version information via FTP.
+//! @return  Result of initialization
+//! @retval  1 Success
+//! @retval  0 Failure
 // --------------------------------------------------------------------------
 int ARDrone::getVersionInfo(void)
 {
-    const char *filename = "version.txt";
+    TCPSocket socket1, socket2;
 
-    // Initialize WinINet
-    HINTERNET hInet = InternetOpen(NULL, INTERNET_OPEN_TYPE_DIRECT, NULL, NULL, 0 );
-
-    // Set timeout [ms]
-    DWORD ms = 500;
-    InternetSetOption(hInet, INTERNET_OPTION_CONNECT_TIMEOUT, &ms, sizeof(ms));
-
-    // Connect to FTP server
-    HINTERNET hConnection = InternetConnectA(hInet, ip, ARDRONE_VERSION_PORT, "anonymous", "", INTERNET_SERVICE_FTP, INTERNET_FLAG_PASSIVE, 0);
-    if (hConnection == NULL) 
-	{
-        CVDRONE_ERROR("InternetConnect(port=%d) was failed. (%s, %d)\n", ARDRONE_VERSION_PORT, __FILE__, __LINE__);
-        InternetCloseHandle(hInet);
+    // Open the IP address and port
+    if (!socket1.open(ip, ARDRONE_FTP_PORT)) {
+        CVDRONE_ERROR("TCPSocket::open(port=%d) failed. (%s, %d)\n", ARDRONE_FTP_PORT, __FILE__, __LINE__);
         return 0;
     }
 
-    // Clear version
-    ZeroMemory(&version, sizeof(ARDRONE_VERSION));
+    // Welcome message
+    const size_t len = 1024;
+    char buf[len] = {'\0'};
+    socket1.receive(buf, len);
 
-    // Get a file through FTP
-    if (!FtpGetFileA(hConnection, filename, filename, FALSE, FILE_ATTRIBUTE_NORMAL, INTERNET_FLAG_TRANSFER_BINARY, 0)) 
-	{
-        CVDRONE_ERROR("FtpGetFile() was failed. (%s, %d)\n", __FILE__, __LINE__);
-        InternetCloseHandle(hConnection);
-        InternetCloseHandle(hInet);
+    // Log in as anonymous
+    socket1.sendf("USER %s\r\n\0", "anonymous");
+    socket1.receive(buf, len);
+
+    // Set to PASV mode
+    int a, b, c, dataport;
+    socket1.sendf("PASV\r\n\0");
+    socket1.receive(buf, len);
+    sscanf(buf, "227 PASV ok (%d,%d,%d,%d,%d,%d)\n", &c, &c, &c, &c, &a, &b);
+    dataport = (a << 8) + b;
+
+    // Open the IP address and port
+    if (!socket2.open(ip, dataport)) {
+        CVDRONE_ERROR("TCPSocket::open(port=%d) failed. (%s, %d)\n", dataport, __FILE__, __LINE__);
         return 0;
     }
-    // 
-    else 
-	{
-        // Open the file
-        FILE *file = fopen(filename, "r");
 
-        // Read FW version
-        fscanf(file, "%d.%d.%d\n", &version.major, &version.minor, &version.revision);
+    // Send requests
+    socket1.sendf("RETR %s\r\n\0", "version.txt");
 
-        // Close the file
-        fclose(file);
+    // Receive data
+    socket2.receive(buf, len);
 
-        // Delete the file
-        remove(filename);
-    }
+    // Get version information
+    sscanf(buf, "%d.%d.%d", &version.major, &version.minor, &version.revision);
+    //printf("AR.Drone Ver %d.%d.%d\n", major, minor, revision);
 
-    // Finalize WinINet
-    InternetCloseHandle(hConnection);
-    InternetCloseHandle(hInet);
+    // See you
+    socket1.close();
+    socket2.close();
 
     return 1;
 }
 
 // --------------------------------------------------------------------------
-// ARDrone::getVersion()
-// Description  : Get AR.Drone's version.
-// Return value : Version number of the AR.Drone.
+//! @brief   Get the version and the revision number
+//! @param   major A pointer to the major version variable
+//! @param   minor A pointer to the minor version variable
+//! @param   revision A pointer to the revision number variable
+//! @return  Major version of AR.Drone
 // --------------------------------------------------------------------------
 int ARDrone::getVersion(int *major, int *minor, int *revision)
 {

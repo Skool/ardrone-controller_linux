@@ -1,6 +1,6 @@
 // -------------------------------------------------------------------------
 // CV Drone (= OpenCV + AR.Drone)
-// Copyright(C) 2013 puku0x
+// Copyright(C) 2016 puku0x
 // https://github.com/puku0x/cvdrone
 //
 // This source file is part of CV Drone library.
@@ -19,139 +19,106 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the files
 // cvdrone-license-LGPL.txt and cvdrone-license-BSD.txt for more details.
+//
+//! @file   navdata.cpp
+//! @brief  Navigation data
+//
 // -------------------------------------------------------------------------
 
 #include "ardrone.h"
 
 // --------------------------------------------------------------------------
-// ARDrone::initNavdata()
-// Description  : Initialize Navdata.
-// Return value : SUCCESS: 1  FAILURE: 0 
+//! @brief   Initialize Navdata.
+//! @return  Result of initialization
+//! @retval  1 Success
+//! @retval  0 Failure
 // --------------------------------------------------------------------------
 int ARDrone::initNavdata(void)
 {
-	DoLog("Initialize navdata");
-
     // Open the IP address and port
-    if (!sockNavdata.open(ip, ARDRONE_NAVDATA_PORT))
-	{
+    if (!sockNavdata.open(ip, ARDRONE_NAVDATA_PORT)) {
         CVDRONE_ERROR("UDPSocket::open(port=%d) was failed. (%s, %d)\n", ARDRONE_NAVDATA_PORT, __FILE__, __LINE__);
         return 0;
     }
 
     // Clear Navdata
-    ZeroMemory(&navdata, sizeof(ARDRONE_NAVDATA));
+    memset(&navdata, 0, sizeof(navdata));
 
     // Start Navdata
     sockNavdata.sendf("\x01\x00\x00\x00");
 
     // AR.Drone 2.0
-    if (version.major == ARDRONE_VERSION_2)
-	{
-		// Enable the lines below, and comment the rest of the lines, to get all data
-		/*
-		sockCommand.sendf("AT*CONFIG_IDS=%d,\"%s\",\"%s\",\"%s\"\r", ++seq, ARDRONE_SESSION_ID, ARDRONE_PROFILE_ID, ARDRONE_APPLOCATION_ID);        
-        sockCommand.sendf("AT*CONFIG=%d,\"general:navdata_demo\",\"FALSE\"\r", ++seq);        
-        Sleep(100);
+    if (version.major == ARDRONE_VERSION_2) {
+        // Disable BOOTSTRAP mode
+        if (mutexCommand) pthread_mutex_lock(mutexCommand);
+        sockCommand.sendf("AT*CONFIG_IDS=%d,\"%s\",\"%s\",\"%s\"\r", ++seq, ARDRONE_SESSION_ID, ARDRONE_PROFILE_ID, ARDRONE_APPLOCATION_ID);
+        //sockCommand.sendf("AT*CONFIG=%d,\"general:navdata_demo\",\"TRUE\"\r", ++seq);
+        sockCommand.sendf("AT*CONFIG=%d,\"general:navdata_demo\",\"FALSE\"\r", ++seq);
+        if (mutexCommand) pthread_mutex_unlock(mutexCommand);
+        msleep(100);
 
         // Seed ACK
         sockCommand.sendf("AT*CTRL=%d,0\r", ++seq);
-		*/
-		
-        // Disable BOOTSTRAP mode
-        sockCommand.sendf("AT*CONFIG_IDS=%d,\"%s\",\"%s\",\"%s\"\r", seq++, ARDRONE_SESSION_ID, ARDRONE_PROFILE_ID, ARDRONE_APPLOCATION_ID);
-        sockCommand.sendf("AT*CONFIG=%d,\"general:navdata_demo\",\"TRUE\"\r", seq++);		
-		Sleep(100);
-		
-		// Seed ACK
-        sockCommand.sendf("AT*CTRL=%d,0\r", seq++);
-		
-		// Create options		
-		//UINT uiOptions = (1 << ARDRONE_NAVDATA_DEMO_TAG) | (1 << ARDRONE_NAVDATA_HDVIDEO_STREAM_TAG) | (1 << ARDRONE_NAVDATA_WIFI_TAG) | (1 << ARDRONE_NAVDATA_GPS_TAG);
-		UINT uiOptions = (1 << ARDRONE_NAVDATA_DEMO_TAG) | (1 << ARDRONE_NAVDATA_HDVIDEO_STREAM_TAG) | (1 << ARDRONE_NAVDATA_GPS_TAG);
-		sockCommand.sendf("AT*CONFIG_IDS=%d,\"%s\",\"%s\",\"%s\"\r", seq++, ARDRONE_SESSION_ID, ARDRONE_PROFILE_ID, ARDRONE_APPLOCATION_ID);
-		sockCommand.sendf("AT*CONFIG=%d,\"general:navdata_options\",\"%u\"\r", seq++, uiOptions);
-        Sleep(100);
     }
     // AR.Drone 1.0
-    else
-	{
+    else {
         // Disable BOOTSTRAP mode
-        sockCommand.sendf("AT*CONFIG=%d,\"general:navdata_demo\",\"TRUE\"\r", seq++);
+        if (mutexCommand) pthread_mutex_lock(mutexCommand);
+        //sockCommand.sendf("AT*CONFIG=%d,\"general:navdata_demo\",\"TRUE\"\r", ++seq);
+        sockCommand.sendf("AT*CONFIG=%d,\"general:navdata_demo\",\"FALSE\"\r", ++seq);
+        if (mutexCommand) pthread_mutex_unlock(mutexCommand);
 
         // Send ACK
-        sockCommand.sendf("AT*CTRL=%d,0\r", seq++);
+        sockCommand.sendf("AT*CTRL=%d,0\r", ++seq);
     }
 
-    // Enable thread loop
-    bflagNavdata = true;
+    // Create a mutex
+    mutexNavdata = new pthread_mutex_t;
+    pthread_mutex_init(mutexNavdata, NULL);
 
     // Create a thread
-    UINT id;
-	threadNavdata = (HANDLE)_beginthreadex(NULL, 0, runNavdata, this, 0, &id);
-    if (threadNavdata == INVALID_HANDLE_VALUE)
-	{
-        CVDRONE_ERROR("_beginthreadex() was failed. (%s, %d)\n", __FILE__, __LINE__);
+    threadNavdata = new pthread_t;
+    if (pthread_create(threadNavdata, NULL, runNavdata, this) != 0) {
+        CVDRONE_ERROR("pthread_create() was failed. (%s, %d)\n", __FILE__, __LINE__);
         return 0;
     }
 
-	DoLog("Navdata Initialized");
     return 1;
 }
 
 // --------------------------------------------------------------------------
-// ARDrone::loopNavdata()
-// Description  : Thread function for Navdata.
-// Return value : SUCCESS:0
+//! @brief   Thread function for Navdata.
+//! @return  None
 // --------------------------------------------------------------------------
-UINT ARDrone::loopNavdata(void)
+void ARDrone::loopNavdata(void)
 {
-    while (bflagNavdata)
-	{
+    while (1) {
         // Get Navdata
-        if (!getNavdata())
-		{
-			bNeedNavdataRestart = true;
-			break;
-		}
-
-		// Set the update time
-		CSNavdataWD.Enter();
-		lNavdataUpdateTime = m_pWatch->Time();
-		CSNavdataWD.Leave();
-
-		Sleep(50);
+        if (!getNavdata()) break;
+        pthread_testcancel();
+        msleep(10);
     }
-
-    // Disable thread loop
-    bflagNavdata = false;
-
-	return 0;
 }
 
-
 // --------------------------------------------------------------------------
-// ARDrone::getNavdata()
-// Description  : Get current navigation data of AR.Drone.
-// Return value : SUCCESS: 1  FAILURE: 0
+//! @brief   Get current navigation data of AR.Drone.
+//! @return  Result of this function
+//! @retval  1 Success
+//! @retval  0 Failure
 // --------------------------------------------------------------------------
 int ARDrone::getNavdata(void)
 {
     // Send a request
-    if(!sockNavdata.sendf("\x01\x00\x00\x00"))
-	{
-		DoLog("Failed to send data over the navdata socket", MSG_ERROR);
-		return 0;
-	}
+    sockNavdata.sendf("\x01\x00\x00\x00");
 
     // Receive data
     char buf[4096] = {'\0'};
     int size = sockNavdata.receive((void*)&buf, sizeof(buf));
 
     // Received something
-    if (size > 0) 
-	{
-        LockNavdata();
+    if (size > 0) {
+        // Enable mutex lock
+        if (mutexNavdata) pthread_mutex_lock(mutexNavdata);
 
         // Header
         int index = 0;
@@ -161,8 +128,7 @@ int ARDrone::getNavdata(void)
         memcpy((void*)&(navdata.vision_defined), (const void*)(buf + index), 4); index += 4;
 
         // Parse navdata
-        while (index < size) 
-		{
+        while (index < size) {
             // Tag and data size
             unsigned short tmp_tag, tmp_size;
             memcpy((void*)&tmp_tag,  (const void*)(buf + index), 2); index += 2;  // tag
@@ -174,8 +140,7 @@ int ARDrone::getNavdata(void)
                 case ARDRONE_NAVDATA_DEMO_TAG:
                     memcpy((void*)&(navdata.demo),            (const void*)(buf + index), MIN(tmp_size, sizeof(navdata.demo)));
                     break;
-                /*
-				case ARDRONE_NAVDATA_TIME_TAG:
+                case ARDRONE_NAVDATA_TIME_TAG:
                     memcpy((void*)&(navdata.time),            (const void*)(buf + index), MIN(tmp_size, sizeof(navdata.time)));
                     break;
                 case ARDRONE_NAVDATA_RAW_MEASURES_TAG:
@@ -247,15 +212,12 @@ int ARDrone::getNavdata(void)
                 case ARDRONE_NAVDATA_KALMAN_PRESSURE_TAG:
                     memcpy((void*)&(navdata.kalman_pressure), (const void*)(buf + index), MIN(tmp_size, sizeof(navdata.kalman_pressure)));
                     break;
-				*/
                 case ARDRONE_NAVDATA_HDVIDEO_STREAM_TAG:
                     memcpy((void*)&(navdata.hdvideo_stream),  (const void*)(buf + index), MIN(tmp_size, sizeof(navdata.hdvideo_stream)));
                     break;
-                /*
-				case ARDRONE_NAVDATA_WIFI_TAG:
+                case ARDRONE_NAVDATA_WIFI_TAG:
                     memcpy((void*)&(navdata.wifi),            (const void*)(buf + index), MIN(tmp_size, sizeof(navdata.wifi)));
                     break;
-				*/
                 case ARDRONE_NAVDATA_GPS_TAG:
                     if (version.major == 2 && version.minor == 4) memcpy((void*)&(navdata.gps),        (const void*)(buf + index), MIN(tmp_size, sizeof(navdata.gps)));
                     else                                          memcpy((void*)&(navdata.zimmu_3000), (const void*)(buf + index), MIN(tmp_size, sizeof(navdata.zimmu_3000)));
@@ -271,155 +233,175 @@ int ARDrone::getNavdata(void)
             index += tmp_size;
         }
 
-        UnlockNavdata();
+        // Disable mutex lock
+        if (mutexNavdata) pthread_mutex_unlock(mutexNavdata);
     }
 
     return 1;
 }
 
 // --------------------------------------------------------------------------
-// ARDrone::getRoll()
-// Description  : Get current role angle of AR.Drone.
-// Return value : Role angle [rad]
+//! @brief   Get current role angle of AR.Drone.
+//! @return  Role angle [rad]
 // --------------------------------------------------------------------------
 double ARDrone::getRoll(void)
 {
-	LockNavdata();
-    double dRoll = navdata.demo.phi * 0.001 * DEG_TO_RAD;
-	UnlockNavdata();
-	
-	return dRoll;
+    // Get the data
+    if (mutexNavdata) pthread_mutex_lock(mutexNavdata);
+    double roll = navdata.demo.phi * 0.001 * DEG_TO_RAD;
+    if (mutexNavdata) pthread_mutex_unlock(mutexNavdata);
+
+    return roll;
 }
 
 // --------------------------------------------------------------------------
-// ARDrone::getPitch()
-// Description  : Get current pitch angle of AR.Drone.
-// Return value : Pitch angle [rad]
+//! @brief   Get current pitch angle of AR.Drone.
+//! @return  Pitch angle [rad]
 // --------------------------------------------------------------------------
 double ARDrone::getPitch(void)
 {
-	LockNavdata();
-    double dPitch = navdata.demo.theta * 0.001 * DEG_TO_RAD;
-	UnlockNavdata();
+    // Get the data
+    if (mutexNavdata) pthread_mutex_lock(mutexNavdata);
+    double pitch = -navdata.demo.theta * 0.001 * DEG_TO_RAD;
+    if (mutexNavdata) pthread_mutex_unlock(mutexNavdata);
 
-	return dPitch;
+    return pitch;
 }
 
 // --------------------------------------------------------------------------
-// ARDrone::getYaw()
-// Description  : Get current yaw angle of AR.Drone.
-// Return value : Yaw angle [rad]
+//! @brief   Get current yaw angle of AR.Drone.
+//! @return  Yaw angle [rad]
 // --------------------------------------------------------------------------
 double ARDrone::getYaw(void)
 {
-	LockNavdata();
-    double dYaw = navdata.demo.psi * 0.001 * DEG_TO_RAD;
-	UnlockNavdata();
+    // Get the data
+    if (mutexNavdata) pthread_mutex_lock(mutexNavdata);
+    double yaw = -navdata.demo.psi * 0.001 * DEG_TO_RAD;
+    if (mutexNavdata) pthread_mutex_unlock(mutexNavdata);
 
-	return dYaw;
+    return yaw;
 }
 
 // --------------------------------------------------------------------------
-// ARDrone::getAltitude()
-// Description  : Get current altitude of AR.Drone.
-// Return value : Altitude [m]
+//! @brief   Get current altitude of AR.Drone.
+//! @return  Altitude [m]
 // --------------------------------------------------------------------------
 double ARDrone::getAltitude(void)
 {
-	LockNavdata();
-    double dAltitude = ((double)navdata.demo.altitude) * 0.001f;
-	UnlockNavdata();
+    // Get the data
+    if (mutexNavdata) pthread_mutex_lock(mutexNavdata);
+    double altitude = navdata.demo.altitude * 0.001;
+    if (mutexNavdata) pthread_mutex_unlock(mutexNavdata);
 
-	return dAltitude;
+    return altitude;
 }
 
 // --------------------------------------------------------------------------
-// ARDrone::getVelocity(X velocity[m/s], Y velocity[m/s], Z velocity[m/s])
-// Description  : Get estimated velocity of AR.Drone.
-// Return value : Velocity [m/s]
+//! @brief   Get estimated velocity of AR.Drone.
+//! @param   vx A pointer to the X velocity variable [m/s]
+//! @param   vy A pointer to the Y velocity variable [m/s]
+//! @param   vz A pointer to the Z velocity variable [m/s]
+//! @return Velocity [m/s]
 // --------------------------------------------------------------------------
 double ARDrone::getVelocity(double *vx, double *vy, double *vz)
 {
-	LockNavdata();
-    if (vx) *vx = navdata.demo.vx * 0.001;
-    if (vy) *vy = navdata.demo.vy * 0.001;
-    if (vz) *vz = navdata.demo.vz * 0.001;
-    double dVelocity = sqrt(navdata.demo.vx*navdata.demo.vx + navdata.demo.vy*navdata.demo.vy + navdata.demo.vz*navdata.demo.vz);
-	UnlockNavdata();
+    // Get the data
+    if (mutexNavdata) pthread_mutex_lock(mutexNavdata);
+    double velocity_x =  navdata.demo.vx * 0.001;
+    double velocity_y = -navdata.demo.vy * 0.001;
+    //double velocity_z = -navdata.demo.vz * 0.001;
+    double velocity_z = -navdata.altitude.altitude_vz * 0.001;
+    if (mutexNavdata) pthread_mutex_unlock(mutexNavdata);
 
-	return dVelocity;
+    // Velocities
+    if (vx) *vx = velocity_x;
+    if (vy) *vy = velocity_y;
+    if (vz) *vz = velocity_z;
+
+    // Velocity [m/s]
+    double velocity = sqrt(velocity_x*velocity_x + velocity_y*velocity_y + velocity_z*velocity_z);
+    return velocity;
 }
 
 // --------------------------------------------------------------------------
-// ARDrone::getBatteryPercentage()
-// Description  : Get current battery percentage of AR.Drone.
-// Return value : Battery percentage [%]
+//! @brief   Get GPS position.
+//! @note    This function requires AR.Drone2.0 Flight Recorder
+//! @param   latitude A pointer to the latitude variable [deg]
+//! @param   longitude A pointer to the longitude variable [deg]
+//! @param   elevation A pointer to the elevation variable [deg]
+//! @return  Result of this function
+//! @retval  1 Success
+//! @retval  0 Failure
 // --------------------------------------------------------------------------
-unsigned int ARDrone::getBatteryPercentage(void)
+int ARDrone::getPosition(double *latitude, double *longitude, double *elevation)
 {
-	LockNavdata();
-    unsigned int uiBatt = (int)navdata.demo.vbat_flying_percentage;
-	UnlockNavdata();
+    // Get the data
+    if (mutexNavdata) pthread_mutex_lock(mutexNavdata);
+    double gps_latitude  = navdata.gps.lat;
+    double gps_longitude = navdata.gps.lon;
+    double gps_elevation = navdata.gps.elevation;
+    int    available     = navdata.gps.data_available;
+    if (mutexNavdata) pthread_mutex_unlock(mutexNavdata);
 
-	return uiBatt;
+    // Positions
+    if (latitude)  *latitude  = gps_latitude;
+    if (longitude) *longitude = gps_longitude;
+    if (elevation) *elevation = gps_elevation;
+
+    return available;
 }
 
 // --------------------------------------------------------------------------
-// ARDrone::onGround()
-// Description  : Check whether AR.Drone is on ground.
-// Return value : YES:true NO:false
+//! @brief   Get current battery percentage of AR.Drone.
+//! @return  Battery percentage [%]
 // --------------------------------------------------------------------------
-bool ARDrone::onGround(void)
+int ARDrone::getBatteryPercentage(void)
 {
-	LockNavdata();
-    bool bOnGround = ((navdata.ardrone_state & ARDRONE_FLY_MASK) == 0);
-	UnlockNavdata();
-    
-	return bOnGround;
+    // Get the data
+    if (mutexNavdata) pthread_mutex_lock(mutexNavdata);
+    int battery = navdata.demo.vbat_flying_percentage;
+    if (mutexNavdata) pthread_mutex_unlock(mutexNavdata);
+
+    return battery;
 }
 
 // --------------------------------------------------------------------------
-// ARDrone::finalizeNavdata()
-// Description  : Finalize Navdata.
-// Return value : NONE
+//! @brief   Check whether AR.Drone is on ground.
+//! @return  Result of this function
+//! @retval  1 Yes
+//! @retval  0 No
+// --------------------------------------------------------------------------
+int ARDrone::onGround(void)
+{
+    // Get the data
+    if (mutexNavdata) pthread_mutex_lock(mutexNavdata);
+    int on_ground = (navdata.ardrone_state & ARDRONE_FLY_MASK) ? 0 : 1;
+    if (mutexNavdata) pthread_mutex_unlock(mutexNavdata);
+
+    return on_ground;
+}
+
+// --------------------------------------------------------------------------
+//! @brief   Finalize Navdata.
+//! @return  None
 // --------------------------------------------------------------------------
 void ARDrone::finalizeNavdata(void)
 {
-    // Disable thread loop
-    bflagNavdata = false;	
-
-	DoLog("Finalize navdata");
-
     // Destroy the thread
-    if (threadNavdata != INVALID_HANDLE_VALUE)
-	{
-        //WaitForSingleObject(threadNavdata, INFINITE);
-		DWORD dwRes = WaitForSingleObject(threadNavdata, 2500);
-		switch(dwRes)
-		{
-			case WAIT_TIMEOUT:
-				DoLog("Wait for navdata: thread timed out !", MSG_ERROR);				
-				TerminateThread(threadNavdata, -1);
-				break;
+    if (threadNavdata) {
+        pthread_cancel(*threadNavdata);
+        pthread_join(*threadNavdata, NULL);
+        delete threadNavdata;
+        threadNavdata = NULL;
+    }
 
-			case WAIT_FAILED:
-				DoLog("Wait for navdata: thread failed !", MSG_ERROR);				
-				TerminateThread(threadNavdata, -1);
-				break;
-
-			default:
-				break;
-		}
-
-        if(FALSE == CloseHandle(threadNavdata))
-		{
-			DoLog("Failed to close navdata thread handle", MSG_ERROR);
-		}
-        threadNavdata = INVALID_HANDLE_VALUE;
+    // Delete the mutex
+    if (mutexNavdata) {
+        pthread_mutex_destroy(mutexNavdata);
+        delete mutexNavdata;
+        mutexNavdata = NULL;
     }
 
     // Close the socket
     sockNavdata.close();
-
-	DoLog("Navdata finalized");
 }

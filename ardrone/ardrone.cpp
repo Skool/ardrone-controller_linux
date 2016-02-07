@@ -1,9 +1,11 @@
 // -------------------------------------------------------------------------
 // CV Drone (= OpenCV + AR.Drone)
-// Copyright(C) 2013 puku0x
+// Copyright(C) 2016 puku0x
 // https://github.com/puku0x/cvdrone
 //
-// This program is free software; you can redistribute it and/or
+// This source file is part of CV Drone library.
+//
+// This library is free software; you can redistribute it and/or
 // modify it under the terms of EITHER:
 // (1) The GNU Lesser General Public License as published by the Free
 //     Software Foundation; either version 2.1 of the License, or (at
@@ -17,56 +19,38 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the files
 // cvdrone-license-LGPL.txt and cvdrone-license-BSD.txt for more details.
+//
+//! @file   ardrone.cpp
+//! @brief  A source file of AR.Drone class
+//
 // -------------------------------------------------------------------------
 
 #include "ardrone.h"
 
 // --------------------------------------------------------------------------
-// ARDrone::ARDrone()
-// Description : Constructor of ARDrone class.
+//! @brief   Constructor of AR.Drone class
+//! @param   ardrone_addr IP address of AR.Drone
+//! @return  None
 // --------------------------------------------------------------------------
-ARDrone::ARDrone()
+ARDrone::ARDrone(const char *ardrone_addr)
 {
-    // Init members
-	Clear();
-}
-
-// --------------------------------------------------------------------------
-// ARDrone::~ARDrone()
-// Description : Destructor of ARDrone class.
-// --------------------------------------------------------------------------
-ARDrone::~ARDrone()
-{
-    if(bflagCommand || bflagNavdata || bflagVideo || bflagWatchdog)
-	{
-		// Finalize the AR.Drone
-		close();
-	}
-}
-
-
-/////////////////////////////////////////////////////////////////////////////
-// Clear members
-/////////////////////////////////////////////////////////////////////////////
-void ARDrone::Clear()
-{
-	// IP Address
+    // IP Address
     strncpy(ip, ARDRONE_DEFAULT_ADDR, 16);
 
     // Sequence number
-    seq = 1;
+    seq = 0;
 
     // Camera image
     img = NULL;
 
-     // Version information
-    memset(&version, 0, sizeof(ARDRONE_VERSION));
+    // Version information
+    memset(&version, 0, sizeof(version));
 
     // Navdata
-    memset(&navdata, 0, sizeof(ARDRONE_NAVDATA));
+    memset(&navdata, 0, sizeof(navdata));
 
     // Configurations
-    memset(&config, 0, sizeof(ARDRONE_CONFIG));
+    memset(&config, 0, sizeof(config));
 
     // Video
     pFormatCtx  = NULL;
@@ -76,174 +60,112 @@ void ARDrone::Clear()
     bufferBGR   = NULL;
     pConvertCtx = NULL;
 
-    // Thread for commnad
-    bflagCommand  = false;
-	bNeedCommandRestart = false;
-    threadCommand = INVALID_HANDLE_VALUE;
-	lCommandUpdateTime = 0;
+    // Thread for AT command
+    threadCommand = NULL;
+    mutexCommand  = NULL;
 
-    // Thread for navdata
-    bflagNavdata  = false;
-	bNeedNavdataRestart = false;
-    threadNavdata = INVALID_HANDLE_VALUE;
-	lNavdataUpdateTime = 0;
+    // Thread for Navdata
+    threadNavdata = NULL;
+    mutexNavdata  = NULL;
 
-    // Thread for video
-    bflagVideo  = false;
-	bNeedVideoRestart = false;
-    threadVideo = INVALID_HANDLE_VALUE;
-	lVideoUpdateTime = 0;
+    // Thread for Video
+    threadVideo = NULL;
+    mutexVideo  = NULL;
 
-	// Watchdog
-	bflagWatchdog = false;
-	threadWatchdog = INVALID_HANDLE_VALUE;
+    // Open if the IP address was specified
+    if (ardrone_addr != NULL) {
+        open(ardrone_addr);
+    }
 }
 
-
 // --------------------------------------------------------------------------
-// ARDrone::open(IP address of AR.Drone)
-// Description  : Initialize the AR.Drone.
-// Return value : SUCCESS: 1  FAILURE: 0
+//! @brief   Destructor of ARDrone class
+//! @return  None
 // --------------------------------------------------------------------------
-int ARDrone::open(wxStopWatch* pWatch, const char *ardrone_addr)
+ARDrone::~ARDrone()
 {
-	DoLog(wxString::Format("Try to open a connection to %s", ardrone_addr));
+    // See you
+    close();
+}
 
-	// Set the stop watch
-	if(NULL == pWatch)
-	{
-		return 0;
-	}
-	m_pWatch = pWatch;
-
-	// Initialize WSA
-    WSAData wsaData;
-    WSAStartup(MAKEWORD(1,1), &wsaData);
-	
-	DoLog("Winsock data initialized");
-
+// --------------------------------------------------------------------------
+//! @brief   Initialize the AR.Drone.
+//! @param   ardrone_addr IP address of AR.Drone
+//! @return  Result of initialization
+//! @retval  1 Success
+//! @retval  0 Failure
+// --------------------------------------------------------------------------
+int ARDrone::open(const char *ardrone_addr)
+{
     // Initialize FFmpeg
     av_register_all();
     avformat_network_init();
     av_log_set_level(AV_LOG_QUIET);
 
-	DoLog("FFMPEG initialized");
-
     // Save IP address
     strncpy(ip, ardrone_addr, 16);
 
-    // Get version informations
-    if (!getVersionInfo())
-	{
-		DoLog("Failed to get version info", MSG_ERROR);
-		return 0;
-	}
-	
-	DoLog(wxString::Format("AR Drone Version: %d.%d.%d\n", version.major, version.minor, version.revision));	
-	
-	// Initialize AT Command
-	if (!initCommand()) 
-	{
-		return 0;
-	}
+    // Get version information
+    if (!getVersionInfo()) return 0;
+    std::cout << "AR.Drone Ver. " << version.major << "." << version.minor << "." << version.revision << "." << std::endl;
 
-	// Initialize Navdata
-	if (!initNavdata()) 
-	{
-		return 0;
-	}
+    // Initialize AT command
+    if (!initCommand()) return 0;
+
+    // Blink LEDs
+    setLED(ARDRONE_LED_ANIM_BLINK_GREEN);
+
+    // Initialize Navdata
+    if (!initNavdata()) return 0;
 
     // Initialize Video
-    if (!initVideo())
-	{
-		return 0;
-	}
+    if (!initVideo()) return 0;
 
-	// Initialize Watchdog
-	if(!initWatchdog())
-	{
-		return 0;
-	}
+    // Wait for updating the status
+    //msleep(500);
 
-    // Wait for updating the state
-    Sleep(500);
+    // Get configurations
+    if (!getConfig()) return 0;
 
-	// Reset emergency
-	resetWatchDog();
-	resetEmergency();
+    // Stop LED animation
+    setLED(ARDRONE_LED_ANIM_STANDARD);
 
-	DoLog(wxString::Format("Connection to %s succesfully opened", ardrone_addr));
+    // Reset emergency
+    resetWatchDog();
+    resetEmergency();
+
     return 1;
 }
 
+// --------------------------------------------------------------------------
+//! @brief   Update the information of the AR.Drone.
+//! @return  Result of update
+//! @retval  1 Success
+//! @retval  0 Failure
+// --------------------------------------------------------------------------
+int ARDrone::update(void)
+{
+    return 1;
+}
 
 // --------------------------------------------------------------------------
-// ARDrone::close()
-// Description  : Finalize
-// Return value : NONE
+//! @brief   Finalize the AR.Drone class.
+//! @return  None
 // --------------------------------------------------------------------------
 void ARDrone::close(void)
 {
-	DoLog("Try to close connection");
-
     // Stop AR.Drone
-	if (!onGround())
-	{
-		DoLog("Drone flying, need to land");
-		landing();
-	}
+    if (!onGround()) landing();
 
-	// Finalize watchdog thread
-	finalizeWatchdog();
+    // Stop LED animation
+    setLED(ARDRONE_LED_ANIM_STANDARD);
 
     // Finalize video
     finalizeVideo();
 
-	// Finalize Navdata
-	finalizeNavdata();
+    // Finalize Navdata
+    finalizeNavdata();
 
-	// Finalize AT command
-	finalizeCommand();
-
-    // Finalize WSA
-    WSACleanup();
-
-	// Clear the members
-	Clear();
-
-	DoLog("Connection closed");
-}
-
-
-// Lock and unlock navdata mutex
-void ARDrone::LockNavdata()
-{
-	CSNavdata.Enter();
-}
-
-void ARDrone::UnlockNavdata()
-{
-	CSNavdata.Leave();
-}
-
-// Lock and unlock command mutex
-void ARDrone::LockCommand()
-{
-	CSCommand.Enter();
-}
-
-void ARDrone::UnlockCommand()
-{
-	CSCommand.Leave();
-}
-
-// Lock and unlock video mutex
-void ARDrone::LockVideo()
-{
-	CSVideo.Enter();
-}
-
-void ARDrone::UnlockVideo()
-{
-	CSVideo.Leave();
+    // Finalize AT command
+    finalizeCommand();
 }

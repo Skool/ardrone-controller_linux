@@ -3,7 +3,7 @@
 
 // -------------------------------------------------------------------------
 // CV Drone (= OpenCV + AR.Drone)
-// Copyright(C) 2013 puku0x
+// Copyright(C) 2016 puku0x
 // https://github.com/puku0x/cvdrone
 //
 // This source file is part of CV Drone library.
@@ -22,6 +22,15 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the files
 // cvdrone-license-LGPL.txt and cvdrone-license-BSD.txt for more details.
+//
+//! @file     ardrone.h
+//! @brief    A header file of AR.Drone class
+//
+//! @mainpage Document of CV Drone
+//!           Project home: https://github.com/puku0x/cvdrone      <br>
+//!           Project Wiki: https://github.com/puku0x/cvdrone/wiki <br>
+//!           Copyright(C) 2014 puku0x                             <br>
+//
 // -------------------------------------------------------------------------
 
 // Coordinate system
@@ -38,59 +47,47 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
 #include <math.h>
 
-// PC : for logging
-#include "../Utils.h"
-#include "../AppConfig.h"
+// OpenCV 1.0
+//#include <opencv/cv.h>
+//#include <opencv/highgui.h>
 
-#include <wx/thread.h>
-
-// Win32API
-#include <windows.h>
-
-// Thread
-#include <process.h>
-
-// WinSock
-#include <winsock.h>
-#pragma comment(lib, "wsock32.lib")
-
-// WinINet
-#include <wininet.h>
-#pragma comment(lib, "wininet.lib")
+// OpenCV 2.0
+#include <opencv2/opencv.hpp>
 
 // FFmpeg
-extern "C"
-{
-	#include <libavcodec/avcodec.h>
+extern "C" {
+    #include <libavcodec/avcodec.h>
     #include <libavformat/avformat.h>
     #include <libswscale/swscale.h>
 }
-#pragma comment(lib, "avcodec.lib")
-#pragma comment(lib, "avdevice.lib")
-#pragma comment(lib, "avfilter.lib")
-#pragma comment(lib, "avformat.lib")
-#pragma comment(lib, "avutil.lib")
-#pragma comment(lib, "swresample.lib")
-#pragma comment(lib, "swscale.lib")
 
-// OpenCV
-#include <opencv2/opencv.hpp>
-#pragma comment(lib, "opencv_calib3d249.lib")
-#pragma comment(lib, "opencv_contrib249.lib")
-#pragma comment(lib, "opencv_core249.lib")
-#pragma comment(lib, "opencv_features2d249.lib")
-#pragma comment(lib, "opencv_flann249.lib")
-#pragma comment(lib, "opencv_highgui249.lib")
-#pragma comment(lib, "opencv_imgproc249.lib")
-#pragma comment(lib, "opencv_legacy249.lib")
-#pragma comment(lib, "opencv_ml249.lib")
-#pragma comment(lib, "opencv_objdetect249.lib")
-#pragma comment(lib, "opencv_photo249.lib")
-#pragma comment(lib, "opencv_stitching249.lib")
-#pragma comment(lib, "opencv_video249.lib")
-#pragma comment(lib, "opencv_videostab249.lib")
+// POSIX threads
+#include <pthread.h>
+
+// Win32 <-> GCC
+#ifdef _WIN32
+#include <windows.h>
+#include <winsock.h>
+#define socklen_t int
+#define msleep(ms) Sleep((DWORD)ms)
+#else
+#include <errno.h>
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+typedef int SOCKET;
+#define INVALID_SOCKET (-1)
+#define SOCKET_ERROR   (-1)
+inline void msleep(unsigned long ms) {
+    while (ms--) usleep(1000);
+}
+#endif
 
 // Macro definitions
 #define ARDRONE_VERSION_1           (1)             // AR.Drone 1.0
@@ -98,17 +95,24 @@ extern "C"
 #define ARDRONE_SESSION_ID          "d2e081a3"      // SessionID
 #define ARDRONE_PROFILE_ID          "be27e2e4"      // Profile ID
 #define ARDRONE_APPLOCATION_ID      "d87f7e0c"      // Application ID
-#define ARDRONE_VERSION_PORT        (5551)          // Port number for FTP
-#define ARDRONE_NAVDATA_PORT        (5554)          // Port number for Navdata
-#define ARDRONE_VIDEO_PORT          (5555)          // Port number for Video
-#define ARDRONE_COMMAND_PORT        (5556)          // Port number for AT command
-#define ARDRONE_CONFIG_PORT         (5559)          // Port number for configuration
+#define ARDRONE_FTP_PORT            (5551)          // Port number for FTP
+#define ARDRONE_AUTH_PORT           (5552)
+#define ARDRONE_VIDEO_RECORDER_PORT (5553)
+#define ARDRONE_NAVDATA_PORT        (5554)          // Port for Navdata
+#define ARDRONE_VIDEO_PORT          (5555)          // Port for Video
+#define ARDRONE_AT_PORT             (5556)          // Port for AT command
+#define ARDRONE_RAW_CAPTURE_PORT    (5557)
+#define ARDRONE_PRINTF_PORT         (5558)
+#define ARDRONE_CONTROL_PORT        (5559)          // Port for configuration
 #define ARDRONE_DEFAULT_ADDR        "192.168.1.1"   // Default IP address of AR.Drone
 #define ARDRONE_NAVDATA_HEADER      (0x55667788)    // Header of Navdata
 
-// Math constants
+// Math definitions
+#ifndef NULL
+#define NULL (0)
+#endif
 #ifndef M_PI
-#define M_PI  (3.14159265358979323846264338327)
+#define M_PI (3.14159265358979323846264338327)
 #endif
 #ifndef RAD_TO_DEG
 #define RAD_TO_DEG (180/M_PI)
@@ -116,90 +120,92 @@ extern "C"
 #ifndef DEG_TO_RAD
 #define DEG_TO_RAD (M_PI/180)
 #endif
+#ifndef MIN
+#define MIN(a, b)  ((a) > (b) ? (b) : (a))
+#endif
+#ifndef MAX
+#define MAX(a, b)  ((a) < (b) ? (b) : (a))
+#endif
+
+// Virtual keys
+#ifdef _WIN32
+#ifndef CV_VK_UP
+#define CV_VK_UP (VK_UP<<16)
+#endif
+#ifndef CV_VK_DOWN
+#define CV_VK_DOWN (VK_DOWN<<16)
+#endif
+#ifndef CV_VK_LEFT
+#define CV_VK_LEFT (VK_LEFT<<16)
+#endif
+#ifndef CV_VK_RIGHT
+#define CV_VK_RIGHT (VK_RIGHT<<16)
+#endif
+#else
+#if defined(__APPLE__)
+#ifndef CV_VK_UP
+#define CV_VK_UP (0xf700)
+#endif
+#ifndef CV_VK_DOWN
+#define CV_VK_DOWN (0xf701)
+#endif
+#ifndef CV_VK_LEFT
+#define CV_VK_LEFT (0xf702)
+#endif
+#ifndef CV_VK_RIGHT
+#define CV_VK_RIGHT (0xf703)
+#endif
+#else
+#ifndef CV_VK_UP
+#define CV_VK_UP (0xff52)
+#endif
+#ifndef CV_VK_DOWN
+#define CV_VK_DOWN (0xff54)
+#endif
+#ifndef CV_VK_LEFT
+#define CV_VK_LEFT (0xff51)
+#endif
+#ifndef CV_VK_RIGHT
+#define CV_VK_RIGHT (0xff53)
+#endif
+#endif
+#endif
 
 // State masks
-typedef enum ARDRONE_STATE_MASK {
-    ARDRONE_FLY_MASK            = 1 <<  0, // FLY MASK                  : (0) Ardrone is landed, (1) Ardrone is flying
-    ARDRONE_VIDEO_MASK          = 1 <<  1, // VIDEO MASK                : (0) Video disable, (1) Video enable
-    ARDRONE_VISION_MASK         = 1 <<  2, // VISION MASK               : (0) Vision disable, (1) Vision enable
-    ARDRONE_CONTROL_MASK        = 1 <<  3, // CONTROL ALGO              : (0) Euler angles control, (1) Angular speed control
-    ARDRONE_ALTITUDE_MASK       = 1 <<  4, // ALTITUDE CONTROL ALGO     : (0) Altitude control inactive (1) Altitude control active
-    ARDRONE_USER_FEEDBACK_START = 1 <<  5, // USER feedback             :     Start button state 
-    ARDRONE_COMMAND_MASK        = 1 <<  6, // Control command ACK       : (0) None, (1) One received
-	ARDRONE_CAMERA_MASK         = 1 <<  7, // CAMERA MASK               : (0) Camera not ready, (1) Camera ready
-    ARDRONE_TRAVELLING_MASK     = 1 <<  8, // Travelling mask           : (0) Disable, (1) Enable
-    ARDRONE_USB_MASK            = 1 <<  9, // USB key                   : (0) Usb key not ready, (1) Usb key ready
-    ARDRONE_NAVDATA_DEMO_MASK   = 1 << 10, // Navdata demo              : (0) All navdata, (1) Only navdata demo
-    ARDRONE_NAVDATA_BOOTSTRAP   = 1 << 11, // Navdata bootstrap         : (0) Options sent in all or demo mode, (1) No navdata options sent
-    ARDRONE_MOTORS_MASK         = 1 << 12, // Motors status             : (0) Ok, (1) Motors problem
-    ARDRONE_COM_LOST_MASK       = 1 << 13, // Communication Lost        : (1) Com problem, (0) Com is ok
-    ARDRONE_VBAT_LOW            = 1 << 15, // VBat low                  : (1) Too low, (0) Ok
-    ARDRONE_USER_EL             = 1 << 16, // User Emergency Landing    : (1) User EL is ON, (0) User EL is OFF
-    ARDRONE_TIMER_ELAPSED       = 1 << 17, // Timer elapsed             : (1) Elapsed, (0) Not elapsed
-    ARDRONE_ANGLES_OUT_OF_RANGE = 1 << 19, // Angles                    : (0) Ok, (1) Out of range
-    ARDRONE_ULTRASOUND_MASK     = 1 << 21, // Ultrasonic sensor         : (0) Ok, (1) Deaf
-    ARDRONE_CUTOUT_MASK         = 1 << 22, // Cutout system detection   : (0) Not detected, (1) Detected
-    ARDRONE_PIC_VERSION_MASK    = 1 << 23, // PIC Version number OK     : (0) A bad version number, (1) Version number is OK */
-    ARDRONE_ATCODEC_THREAD_ON   = 1 << 24, // ATCodec thread ON         : (0) Thread OFF (1) thread ON
-    ARDRONE_NAVDATA_THREAD_ON   = 1 << 25, // Navdata thread ON         : (0) Thread OFF (1) thread ON
-    ARDRONE_VIDEO_THREAD_ON     = 1 << 26, // Video thread ON           : (0) Thread OFF (1) thread ON
-    ARDRONE_ACQ_THREAD_ON       = 1 << 27, // Acquisition thread ON     : (0) Thread OFF (1) thread ON
-    ARDRONE_CTRL_WATCHDOG_MASK  = 1 << 28, // CTRL watchdog             : (1) Delay in control execution (> 5ms), (0) Control is well scheduled
-    ARDRONE_ADC_WATCHDOG_MASK   = 1 << 29, // ADC Watchdog              : (1) Delay in uart2 dsr (> 5ms), (0) Uart2 is good
-    ARDRONE_COM_WATCHDOG_MASK   = 1 << 30, // Communication Watchdog    : (1) Com problem, (0) Com is ok
-    ARDRONE_EMERGENCY_MASK      = 1 << 31  // Emergency landing         : (0) No emergency, (1) Emergency
+enum ARDRONE_STATE_MASK {
+    ARDRONE_FLY_MASK            = 1U <<  0, // FLY MASK                  : (0) Ardrone is landed, (1) Ardrone is flying
+    ARDRONE_VIDEO_MASK          = 1U <<  1, // VIDEO MASK                : (0) Video disable, (1) Video enable
+    ARDRONE_VISION_MASK         = 1U <<  2, // VISION MASK               : (0) Vision disable, (1) Vision enable
+    ARDRONE_CONTROL_MASK        = 1U <<  3, // CONTROL ALGO              : (0) Euler angles control, (1) Angular speed control
+    ARDRONE_ALTITUDE_MASK       = 1U <<  4, // ALTITUDE CONTROL ALGO     : (0) Altitude control inactive (1) Altitude control active
+    ARDRONE_USER_FEEDBACK_START = 1U <<  5, // USER feedback             :     Start button state 
+    ARDRONE_COMMAND_MASK        = 1U <<  6, // Control command ACK       : (0) None, (1) One received
+    ARDRONE_CAMERA_MASK         = 1U <<  7, // CAMERA MASK               : (0) Camera not ready, (1) Camera ready
+    ARDRONE_TRAVELLING_MASK     = 1U <<  8, // Travelling mask           : (0) Disable, (1) Enable
+    ARDRONE_USB_MASK            = 1U <<  9, // USB key                   : (0) Usb key not ready, (1) Usb key ready
+    ARDRONE_NAVDATA_DEMO_MASK   = 1U << 10, // Navdata demo              : (0) All navdata, (1) Only navdata demo
+    ARDRONE_NAVDATA_BOOTSTRAP   = 1U << 11, // Navdata bootstrap         : (0) Options sent in all or demo mode, (1) No navdata options sent
+    ARDRONE_MOTORS_MASK         = 1U << 12, // Motors status             : (0) Ok, (1) Motors problem
+    ARDRONE_COM_LOST_MASK       = 1U << 13, // Communication Lost        : (1) Com problem, (0) Com is ok
+    ARDRONE_VBAT_LOW            = 1U << 15, // VBat low                  : (1) Too low, (0) Ok
+    ARDRONE_USER_EL             = 1U << 16, // User Emergency Landing    : (1) User EL is ON, (0) User EL is OFF
+    ARDRONE_TIMER_ELAPSED       = 1U << 17, // Timer elapsed             : (1) Elapsed, (0) Not elapsed
+    ARDRONE_ANGLES_OUT_OF_RANGE = 1U << 19, // Angles                    : (0) Ok, (1) Out of range
+    ARDRONE_ULTRASOUND_MASK     = 1U << 21, // Ultrasonic sensor         : (0) Ok, (1) Deaf
+    ARDRONE_CUTOUT_MASK         = 1U << 22, // Cutout system detection   : (0) Not detected, (1) Detected
+    ARDRONE_PIC_VERSION_MASK    = 1U << 23, // PIC Version number OK     : (0) A bad version number, (1) Version number is OK */
+    ARDRONE_ATCODEC_THREAD_ON   = 1U << 24, // ATCodec thread ON         : (0) Thread OFF (1) thread ON
+    ARDRONE_NAVDATA_THREAD_ON   = 1U << 25, // Navdata thread ON         : (0) Thread OFF (1) thread ON
+    ARDRONE_VIDEO_THREAD_ON     = 1U << 26, // Video thread ON           : (0) Thread OFF (1) thread ON
+    ARDRONE_ACQ_THREAD_ON       = 1U << 27, // Acquisition thread ON     : (0) Thread OFF (1) thread ON
+    ARDRONE_CTRL_WATCHDOG_MASK  = 1U << 28, // CTRL watchdog             : (1) Delay in control execution (> 5ms), (0) Control is well scheduled
+    ARDRONE_ADC_WATCHDOG_MASK   = 1U << 29, // ADC Watchdog              : (1) Delay in uart2 dsr (> 5ms), (0) Uart2 is good
+    ARDRONE_COM_WATCHDOG_MASK   = 1U << 30, // Communication Watchdog    : (1) Com problem, (0) Com is ok
+    ARDRONE_EMERGENCY_MASK      = 1U << 31  // Emergency landing         : (0) No emergency, (1) Emergency
 };
 
-// Flight animation IDs
-typedef enum ARDRONE_ANIMATION_ID {
-    ARDRONE_ANIM_PHI_M30_DEG = 0,
-    ARDRONE_ANIM_PHI_30_DEG,
-    ARDRONE_ANIM_THETA_M30_DEG,
-    ARDRONE_ANIM_THETA_30_DEG,
-    ARDRONE_ANIM_THETA_20DEG_YAW_200DEG,
-    ARDRONE_ANIM_THETA_20DEG_YAW_M200DEG,
-    ARDRONE_ANIM_TURNAROUND,
-    ARDRONE_ANIM_TURNAROUND_GODOWN,
-    ARDRONE_ANIM_YAW_SHAKE,
-    ARDRONE_ANIM_YAW_DANCE,
-    ARDRONE_ANIM_PHI_DANCE,
-    ARDRONE_ANIM_THETA_DANCE,
-    ARDRONE_ANIM_VZ_DANCE,
-    ARDRONE_ANIM_WAVE,
-    ARDRONE_ANIM_PHI_THETA_MIXED,
-    ARDRONE_ANIM_DOUBLE_PHI_THETA_MIXED,
-    ARDRONE_NB_ANIM_MAYDAY
-};
-
-// LED animation IDs
-enum ARDRONE_LED_ANIMATION_ID {
-    BLINK_GREEN_RED = 0,
-    BLINK_GREEN,
-    BLINK_RED,
-    BLINK_ORANGE,
-    SNAKE_GREEN_RED,
-    FIRE,
-    STANDARD,
-    RED,
-    GREEN,
-    RED_SNAKE,
-    BLANK,
-    RIGHT_MISSILE,
-    LEFT_MISSILE,
-    DOUBLE_MISSILE,
-    FRONT_LEFT_GREEN_OTHERS_RED,
-    FRONT_RIGHT_GREEN_OTHERS_RED,
-    REAR_RIGHT_GREEN_OTHERS_RED,
-    REAR_LEFT_GREEN_OTHERS_RED,
-    LEFT_GREEN_RIGHT_RED,
-    LEFT_RED_RIGHT_GREEN,
-    BLINK_STANDARD
-};
-
-/////////////////////////////////////
-// Data options
-enum NAVDATA_TAG
-{
+// Navdata tags
+enum ARDRONE_NAVDATA_TAG {
     ARDRONE_NAVDATA_DEMO_TAG            =  0,
     ARDRONE_NAVDATA_TIME_TAG            =  1,
     ARDRONE_NAVDATA_RAW_MEASURES_TAG    =  2,
@@ -233,15 +239,55 @@ enum NAVDATA_TAG
     ARDRONE_NAVDATA_CKS_TAG             = 0xFFFF
 };
 
+// Flight animation IDs
+enum ARDRONE_ANIMATION_ID {
+    ARDRONE_ANIM_PHI_M30_DEG             =  0,
+    ARDRONE_ANIM_PHI_30_DEG              =  1,
+    ARDRONE_ANIM_THETA_M30_DEG           =  2,
+    ARDRONE_ANIM_THETA_30_DEG            =  3,
+    ARDRONE_ANIM_THETA_20DEG_YAW_200DEG  =  4,
+    ARDRONE_ANIM_THETA_20DEG_YAW_M200DEG =  5,
+    ARDRONE_ANIM_TURNAROUND              =  6,
+    ARDRONE_ANIM_TURNAROUND_GODOWN       =  7,
+    ARDRONE_ANIM_YAW_SHAKE               =  8,
+    ARDRONE_ANIM_YAW_DANCE               =  9,
+    ARDRONE_ANIM_PHI_DANCE               = 10,
+    ARDRONE_ANIM_THETA_DANCE             = 11,
+    ARDRONE_ANIM_VZ_DANCE                = 12,
+    ARDRONE_ANIM_WAVE                    = 13,
+    ARDRONE_ANIM_PHI_THETA_MIXED         = 14,
+    ARDRONE_ANIM_DOUBLE_PHI_THETA_MIXED  = 15,
+    ARDRONE_ANIM_FLIP_AHEAD              = 16,  // AR.Drone 2.0
+    ARDRONE_ANIM_FLIP_BEHIND             = 17,  // AR.Drone 2.0
+    ARDRONE_ANIM_FLIP_LEFT               = 18,  // AR.Drone 2.0
+    ARDRONE_ANIM_FLIP_RIGHT              = 19,  // AR.Drone 2.0
+    ARDRONE_NB_ANIM_MAYDAY               = 20
+};
 
-/////////////////////////////////////
-// USB recording states
-enum HDVIDEO
-{
-	NAVDATA_HDVIDEO_STORAGE_FIFO_IS_FULL	= (1<<0),
-	NAVDATA_HDVIDEO_USBKEY_IS_PRESENT		= (1<<8),
-	NAVDATA_HDVIDEO_USBKEY_IS_RECORDING		= (1<<9),
-	NAVDATA_HDVIDEO_USBKEY_IS_FULL			= (1<<10)
+// LED animation IDs
+enum ARDRONE_LED_ANIMATION_ID {
+    ARDRONE_LED_ANIM_BLINK_GREEN_RED              =  0,
+    ARDRONE_LED_ANIM_BLINK_GREEN                  =  1,
+    ARDRONE_LED_ANIM_BLINK_RED                    =  2,
+    ARDRONE_LED_ANIM_BLINK_ORANGE                 =  3,
+    ARDRONE_LED_ANIM_SNAKE_GREEN_RED              =  4,
+    ARDRONE_LED_ANIM_FIRE                         =  5,
+    ARDRONE_LED_ANIM_STANDARD                     =  6,
+    ARDRONE_LED_ANIM_RED                          =  7,
+    ARDRONE_LED_ANIM_GREEN                        =  8,
+    ARDRONE_LED_ANIM_RED_SNAKE                    =  9,
+    ARDRONE_LED_ANIM_BLANK                        = 10,
+    ARDRONE_LED_ANIM_RIGHT_MISSILE                = 11,
+    ARDRONE_LED_ANIM_LEFT_MISSILE                 = 12,
+    ARDRONE_LED_ANIM_DOUBLE_MISSILE               = 13,
+    ARDRONE_LED_ANIM_FRONT_LEFT_GREEN_OTHERS_RED  = 14,
+    ARDRONE_LED_ANIM_FRONT_RIGHT_GREEN_OTHERS_RED = 15,
+    ARDRONE_LED_ANIM_REAR_RIGHT_GREEN_OTHERS_RED  = 16,
+    ARDRONE_LED_ANIM_REAR_LEFT_GREEN_OTHERS_RED   = 17,
+    ARDRONE_LED_ANIM_LEFT_GREEN_RIGHT_RED         = 18,
+    ARDRONE_LED_ANIM_LEFT_RED_RIGHT_GREEN         = 19,
+    ARDRONE_LED_ANIM_BLINK_STANDARD               = 20,
+    ARDRONE_NB_LED_ANIM_MAYDAY                    = 21
 };
 
 // TCP Class
@@ -250,12 +296,12 @@ public:
     TCPSocket();                            // Constructor
     virtual ~TCPSocket();                   // Destructor
     int  open(const char *addr, int port);  // Initialize
-    int  send2(void *data, int size);       // Send data
-    int  sendf(char *str, ...);             // Send with format
-    int  receive(void *data, int size);     // Receive data
+    int  send2(void *data, size_t size);    // Send data
+    int  sendf(const char *str, ...);       // Send with format
+    int  receive(void *data, size_t size);  // Receive data
     void close(void);                       // Finalize
 private:
-    SOCKET sock;                            // Sockets
+    SOCKET sock;                            // Socket
     sockaddr_in server_addr, client_addr;   // Server/Client IP adrress
 };
 
@@ -263,17 +309,16 @@ private:
 class UDPSocket {
 public:
     UDPSocket();                            // Constructor
-    ~UDPSocket();                           // Destructor
+    virtual ~UDPSocket();                   // Destructor
     int  open(const char *addr, int port);  // Initialize
-    int  send2(void *data, int size);       // Send data
-    int  sendf(char *str, ...);             // Send with format
-    int  receive(void *data, int size);     // Receive data
+    int  send2(void *data, size_t size);    // Send data
+    int  sendf(const char *str, ...);       // Send with format
+    int  receive(void *data, size_t size);  // Receive data
     void close(void);                       // Finalize
 private:
-    SOCKET sock;                            // Sockets
+    SOCKET sock;                            // Socket
     sockaddr_in server_addr, client_addr;   // Server/Client IP adrress
 };
-
 
 // Navdata
 #pragma pack(push, 1)
@@ -784,12 +829,9 @@ struct ARDRONE_NAVDATA {
 };
 #pragma pack(pop)
 
-
 // Configurations
-struct ARDRONE_CONFIG 
-{
-    struct CONFIG_GENERAL 
-	{
+struct ARDRONE_CONFIG {
+    struct CONFIG_GENERAL {
         int   num_version_config;
         int   num_version_mb;
         char  num_version_soft[32];
@@ -823,8 +865,7 @@ struct ARDRONE_CONFIG
         int   battery_type;
     } general;
 
-    struct CONFIG_CONTROL 
-	{
+    struct CONFIG_CONTROL {
         float accs_offset[3];
         float accs_gains[9];
         float gyros_offset[3];
@@ -863,8 +904,7 @@ struct ARDRONE_CONFIG
         bool  flying_camera_enable;
     } control;
 
-    struct CONFIG_NETWORK 
-	{
+    struct CONFIG_NETWORK {
         char ssid_single_player[32];
         char ssid_multi_player[32];
         int  wifi_mode;
@@ -872,15 +912,13 @@ struct ARDRONE_CONFIG
         char owner_mac[18];
     } network;
 
-    struct CONFIG_PIC 
-	{
+    struct CONFIG_PIC {
         int ultrasound_freq;
         int ultrasound_watchdog;
         int pic_version;
     } pic;
 
-    struct CONFIG_VIDEO 
-	{
+    struct CONFIG_VIDEO {
         int  camif_fps;
         int  camif_buffers;
         int  num_trackers;
@@ -901,13 +939,11 @@ struct ARDRONE_CONFIG
         int  whitebalance_mode[2];
     } video;
 
-    struct CONFIG_LEDS 
-	{
+    struct CONFIG_LEDS {
         int leds_anim[3];
     } leds;
 
-    struct CONFIG_DETECT 
-	{
+    struct CONFIG_DETECT {
         int enemy_colors;
         int enemy_without_shell;
         int groundstripe_colors;
@@ -917,15 +953,13 @@ struct ARDRONE_CONFIG
         int detections_select_v;
     } detect;
 
-    struct CONFIG_SYSLOG 
-	{
+    struct CONFIG_SYSLOG {
         int output;
         int max_size;
         int nb_files;
     } syslog;
 
-    struct CONFIG_CUSTOM 
-	{
+    struct CONFIG_CUSTOM {
         char application_desc[64];
         char profile_desc[64];
         char session_desc[64];
@@ -934,13 +968,11 @@ struct ARDRONE_CONFIG
         char session_id[9];
     } custom;
 
-    struct CONFIG_USERBOX 
-	{
+    struct CONFIG_USERBOX {
         int userbox_cmd;
     } userbox;
 
-    struct CONFIG_GPS 
-	{
+    struct CONFIG_GPS {
         float latitude;
         float longitude;
         float altitude;
@@ -948,8 +980,7 @@ struct ARDRONE_CONFIG
         //int ephemeris_uploaded;
     } gps;
 
-    struct FLIGHT_PLAN 
-	{
+    struct FLIGHT_PLAN {
         float default_validation_radius;
         float default_validation_time;
         int   max_distance_from_takeoff;
@@ -973,8 +1004,7 @@ struct ARDRONE_CONFIG
         char  mavlink_js_start[3];
     } flightplan;
 
-    struct RESCUE 
-	{
+    struct RESCUE {
         int rescue;
     } rescue;
 };
@@ -986,59 +1016,85 @@ struct ARDRONE_VERSION {
     int revision;
 };
 
+// IplImage* <-> cv::Mat converter
+class ARDRONE_IMAGE {
+public:
+    ARDRONE_IMAGE(IplImage *img = NULL) {
+        image = img;
+    }
+    operator IplImage*() {
+        return image;
+    }
+    operator cv::Mat() {
+        if (!image) return cv::Mat();
+        return cv::cvarrToMat(image, true);
+    }
+
+private:
+    IplImage *image;
+};
+
 // AR.Drone class
 class ARDrone {
 public:
     // Constructor / Destructor
-    ARDrone();
+    ARDrone(const char *ardrone_addr = NULL);
     virtual ~ARDrone();
 
     // Initialize
-    int open(wxStopWatch* pWatch, const char *ardrone_addr = ARDRONE_DEFAULT_ADDR);
+    virtual int open(const char *ardrone_addr = ARDRONE_DEFAULT_ADDR);
+
+    // Update
+    virtual int update(void);
 
     // Finalize (Automatically called)
-    void close(void);
+    virtual void close(void);
 
-    // Get an image for OpenCV
-    IplImage* getImage(void);
+    // Get an image
+    virtual ARDRONE_IMAGE getImage(void);
+    virtual ARDrone& operator >> (cv::Mat &image);
+    virtual bool willGetNewImage(void);
 
     // Get AR.Drone's firmware version
-    int getVersion(int *major = NULL, int *minor = NULL, int *revision = NULL);
-	// Dump drone config to file
-	int getConfig(void);
+    virtual int getVersion(int *major = NULL, int *minor = NULL, int *revision = NULL);
 
     // Get sensor values
-    double getRoll(void);       // Roll angle  [rad]
-    double getPitch(void);      // Pitch angle [rad]
-    double getYaw(void);        // Yaw angle   [rad]
-    double getAltitude(void);   // Altitude    [m]
-    double getVelocity(double *vx = NULL, double *vy = NULL, double *vz = NULL); // Velocity [m/s]
+    virtual double getRoll(void);       // Roll angle  [rad]
+    virtual double getPitch(void);      // Pitch angle [rad]
+    virtual double getYaw(void);        // Yaw angle   [rad]
+    virtual double getAltitude(void);   // Altitude    [m]
+    virtual double getVelocity(double *vx = NULL, double *vy = NULL, double *vz = NULL); // Velocity [m/s]
+    virtual int    getPosition(double *latitude = NULL, double *longitude = NULL, double *elevation = NULL); // GPS (only for AR.Drone 2.0)
 
     // Battery charge [%]
-    unsigned int getBatteryPercentage(void);
+    virtual int getBatteryPercentage(void);
 
     // Take off / Landing / Emergency
-    void takeoff(void);
-    void landing(void);
-    void emergency(void);
+    virtual void takeoff(void);
+    virtual void landing(void);
+    virtual void emergency(void);
 
     // Move with velocity [m/s]
-    void move(double vx, double vy, double vr);
-    void move3D(double vx, double vy, double vz, double vr);
+    virtual void move(double vx, double vy, double vr);
+    virtual void move3D(double vx, double vy, double vz, double vr);
 
     // Change camera channel
-    void setCamera(int channel);
+    virtual void setCamera(int channel);
+
+    // Animation
+    virtual void setAnimation(int id, int duration = 0);             // Flight animation
+    virtual void setLED(int id, float freq = 0.0, int duration = 0); // LED animation
+
+    // Calibration
+    virtual void setFlatTrim(void);                 // Flat trim
+    virtual void setCalibration(int device = 0);    // Magnetometer calibration
 
     // Others
-    bool onGround(void);                            // Check on ground
-    void setAnimation(int id, int duration);        // Flight animation
-    void setLED(int id, float freq, int duration);  // LED animation
-    void startVideoRecord(void);                    // Video recording for AR.Drone 2.0
-    void stopVideoRecord(void);                     // You should set a USB key with > 100MB to your drone	
+    virtual int  onGround(void);                    // Check on ground
+    virtual void setVideoRecord(bool activate);     // Video recording (only for AR.Drone 2.0)
+    virtual void setOutdoorMode(bool activate);     // Outdoor mode (experimental)
 
 protected:
-	void Clear();
-
     // IP address
     char ip[16];
 
@@ -1051,7 +1107,7 @@ protected:
     // Sockets
     UDPSocket sockCommand;
     UDPSocket sockNavdata;
-    UDPSocket sockVideo;	// Only used for Ar Drone 1
+    UDPSocket sockVideo;
 
     // Version information
     ARDRONE_VERSION version;
@@ -1059,7 +1115,7 @@ protected:
     // Navigation data
     ARDRONE_NAVDATA navdata;
 
-	// Configurations
+    // Configurations
     ARDRONE_CONFIG config;
 
     // Video
@@ -1068,85 +1124,57 @@ protected:
     AVFrame         *pFrame, *pFrameBGR;
     uint8_t         *bufferBGR;
     SwsContext      *pConvertCtx;
+    bool            newImage;
 
-    // Thread for command
-    bool   bflagCommand;
-	bool   bNeedCommandRestart;
-    HANDLE threadCommand;
-	wxCriticalSection CSCommand, CSCommandWD;
-    UINT   loopCommand(void);
-	long   lCommandUpdateTime;	
-    static UINT WINAPI runCommand(void *args) 
-	{
-        return reinterpret_cast<ARDrone*>(args)->loopCommand();
+    // Thread for AT command
+    pthread_t *threadCommand;
+    pthread_mutex_t *mutexCommand;
+    virtual void loopCommand(void);
+    static void *runCommand(void *args) {
+        reinterpret_cast<ARDrone*>(args)->loopCommand();
+        return NULL;
     }
 
-    // Thread for navdata
-    bool   bflagNavdata;
-	bool   bNeedNavdataRestart;
-    HANDLE threadNavdata;
-	wxCriticalSection CSNavdata, CSNavdataWD;
-    UINT   loopNavdata(void);
-	long   lNavdataUpdateTime;
-    static UINT WINAPI runNavdata(void *args)
-	{
-        return reinterpret_cast<ARDrone*>(args)->loopNavdata();
+    // Thread for Navdata
+    pthread_t *threadNavdata;
+    pthread_mutex_t *mutexNavdata;
+    virtual void loopNavdata(void);
+    static void *runNavdata(void *args) {
+        reinterpret_cast<ARDrone*>(args)->loopNavdata();
+        return NULL;
     }
 
-    // Thread for video
-    bool   bflagVideo;
-	bool   bNeedVideoRestart;
-    HANDLE threadVideo;
-	wxCriticalSection CSVideo, CSVideoWD;
-    UINT   loopVideo(void);
-	long   lVideoUpdateTime;
-    static UINT WINAPI runVideo(void *args)
-	{
-        return reinterpret_cast<ARDrone*>(args)->loopVideo();
+    // Thread for Video
+    pthread_t *threadVideo;
+    pthread_mutex_t *mutexVideo;
+    virtual void loopVideo(void);
+    static void *runVideo(void *args) {
+        reinterpret_cast<ARDrone*>(args)->loopVideo();
+        return NULL;
     }
-
-	// Thread for watchdog
-    bool   bflagWatchdog;
-    HANDLE threadWatchdog;
-	// Watch used for update time
-	wxStopWatch* m_pWatch;
-    UINT   loopWatchdog(void);
-    static UINT WINAPI runWatchdog(void *args) 
-	{
-        return reinterpret_cast<ARDrone*>(args)->loopWatchdog();
-    }
-
-	// Lock and unlock functions
-	void LockNavdata();
-	void UnlockNavdata();
-	void LockCommand();
-	void UnlockCommand();
-	void LockVideo();
-	void UnlockVideo();
 
     // Initialize (internal)
-    int initNavdata(void);
-    int initVideo(void);
-    int initCommand(void);
-	bool initWatchdog(void);
+    virtual int initCommand(void);
+    virtual int initNavdata(void);
+    virtual int initVideo(void);
 
     // Get informations (internal)
-    int getVersionInfo(void);
-	//int getConfig(void);
-    int getNavdata(void);
-    int getVideo(void);
+    virtual int getVersionInfo(void);
+    virtual int getNavdata(void);
+    virtual int getVideo(void);
+    virtual int getConfig(void);
 
     // Send commands (internal)
-    void resetWatchDog(void);
-    void resetEmergency(void);
+    virtual void resetWatchDog(void);
+    virtual void resetEmergency(void);
 
     // Finalize (internal)
-    void finalizeNavdata(void);
-    void finalizeVideo(void);
-    void finalizeCommand(void);
-	void finalizeWatchdog(void);
+    virtual void finalizeCommand(void);
+    virtual void finalizeNavdata(void);
+    virtual void finalizeVideo(void);
 };
 
+#ifdef _WIN32
 // --------------------------------------------------------------------------
 // CVDRONE_ERROR(Message)
 // Description  : Show an error message.
@@ -1159,12 +1187,14 @@ CV_INLINE void CVDRONE_ERROR(const char *message, ...)
 
     // Apply format
     va_start(arg, message);
-    vsprintf(str, message, arg);
+    vsnprintf(str, 256, message, arg);
     va_end(arg);
 
-    // Show message box
-    //MessageBox(NULL, str, "CVDRONE ERROR MESSAGE", MB_OK|MB_ICONERROR|MB_TOPMOST|MB_SETFOREGROUND);
-	DoLog(wxString::Format("[CvDrone] %s", str), MSG_ERROR);
+    // Show the message
+    MessageBox(NULL, str, "CVDRONE ERROR MESSAGE", MB_OK|MB_ICONERROR|MB_TOPMOST|MB_SETFOREGROUND);
 }
+#else
+#define CVDRONE_ERROR printf
+#endif
 
 #endif

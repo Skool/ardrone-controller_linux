@@ -6,6 +6,7 @@
 #include <wx/hyperlink.h>
 
 #include "Utils.h"
+#include "Ressources.h"
 
 BEGIN_EVENT_TABLE(CAboutDialog, wxDialog)
 	EVT_CLOSE(CAboutDialog::OnClose)
