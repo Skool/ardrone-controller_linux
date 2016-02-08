@@ -2,9 +2,11 @@
 // Manage one input Direction
 /////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#ifndef __HEADER_INPUTDIRECTION__
+#define __HEADER_INPUTDIRECTION__
 
-#include "wx/wx.h"
+
+#include <wx/wx.h>
 #include "Joystick.h"
 
 
@@ -59,3 +61,5 @@ private:
 	double			m_dDeadZoneMin;
 	double			m_dDeadZoneMax;
 };
+
+#endif

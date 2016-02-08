@@ -1,5 +1,5 @@
-#ifndef __RESSOURCES_HEADER__
-#define __RESSOURCES_HEADER__
+#ifndef __HEADER_RESSOURCES__
+#define __HEADER_RESSOURCES__
 
 /////////////////////////////////////////////////////////////////////////////
 // Ressources

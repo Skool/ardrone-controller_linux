@@ -501,7 +501,7 @@ bool CDroneController::Connect()
 		m_Input.ResetFlag((eKey)0xFFFF);
 
 		// Init the drone and connect to it
-		if(!m_Drone.open(&m_Watch, CConfig::GetSingleton()->GetIpAddress().ToAscii()))
+		if(!m_Drone.open(CConfig::GetSingleton()->GetIpAddress().ToAscii()))
 		{
 			DoLog("Failed to connect to the drone, clean up !", MSG_ERROR);
 			
@@ -519,7 +519,7 @@ bool CDroneController::Connect()
 		SetStatus(STATE_CONNECTEDTODRONE);
 
 		// Initialize Wifi
-		eWifiErrors wErr = m_Wifi.Init();
+		/*eWifiErrors wErr = m_Wifi.Init();
 		strNetName = m_Wifi.GetNetworkName();
 		switch(wErr)
 		{
@@ -553,6 +553,7 @@ bool CDroneController::Connect()
 			}
 			break;
 		}
+		*/
 
 		// Start the timer
 		if(!m_Timer.Start(2000))
@@ -598,7 +599,7 @@ bool CDroneController::Disconnect()
 		m_Timer.Stop();
 
 		// Clean Wifi manager
-		m_Wifi.Clean();
+		//m_Wifi.Clean();
 
 		// Close connection to the drone
 		m_Drone.close();
@@ -732,7 +733,7 @@ void CDroneController::OnTimerUpdate(wxTimerEvent& WXUNUSED(event))
 	}
 
 	// Get current wifi signal
-	if(m_Wifi.Update())
+	/*if(m_Wifi.Update())
 	{
 		long lSignal = m_Wifi.GetSignalIntensity();
 		if(lSignal < lWifiCritical)
@@ -747,7 +748,7 @@ void CDroneController::OnTimerUpdate(wxTimerEvent& WXUNUSED(event))
 	else
 	{
 		DoLog("Failed to update wifi signal !", MSG_ERROR);
-	}
+	}*/
 	
 	// Play sound if authorized
 	if( CConfig::GetSingleton()->HasSoundFlag() )
@@ -781,6 +782,9 @@ void CDroneController::OnTimerUpdate(wxTimerEvent& WXUNUSED(event))
 /////////////////////////////////////////////////////////////////////////////
 void CDroneController::OnGetDroneConfig(wxCommandEvent& WXUNUSED(event))
 {
+    DoMessage(GetText("Dump not implemented yet"), MSG_INFO);
+    // TODO: correct this
+    /*
 	if(1 == m_Drone.getConfig())
 	{
 		DoMessage(GetText("DumpSuccess"), MSG_INFO);
@@ -788,7 +792,7 @@ void CDroneController::OnGetDroneConfig(wxCommandEvent& WXUNUSED(event))
 	else
 	{
 		DoMessage(GetText("DumpFailed"), MSG_ERROR);
-	}
+	}*/
 }
 
 
@@ -1243,18 +1247,18 @@ wxThread::ExitCode CDroneController::Entry()
 					// Switch status
 					if(HasStatus(STATE_FULLSCREEN))
 					{
-						if(CConfig::GetSingleton()->UseLowRes())
+						/*if(CConfig::GetSingleton()->UseLowRes())
 						{
 							m_ScreenManager.ResetResolution();
-						}
+						}*/
 						ResetStatus(STATE_FULLSCREEN);
 					}
 					else
 					{
-						if(CConfig::GetSingleton()->UseLowRes())
+						/*if(CConfig::GetSingleton()->UseLowRes())
 						{
 							m_ScreenManager.SetLowResolution();
-						}
+						}*/
 						SetStatus(STATE_FULLSCREEN);
 					}
 					
@@ -1361,7 +1365,7 @@ wxThread::ExitCode CDroneController::Entry()
 		DoRender();
 
 		// Let the system responsive
-		m_thread->msleep(1);
+		msleep(1);
 	}
 
 	DoLog("Main frame thread stopped");
@@ -1468,9 +1472,11 @@ bool CDroneController::DoRender()
 			{
 				m_Input.ResetFlag(KEY_SCREENSHOT);
 
-				SYSTEMTIME st;
-				GetLocalTime(&st);
-				if(!m_Image.SaveFile(wxString::Format("Media\\Pictures\\Pic_%d%02d%02d%02d%02d%02d.png", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond), wxBITMAP_TYPE_PNG))
+                time_t rawtime;
+                struct tm * timeinfo;
+				time ( &rawtime );
+                timeinfo = localtime ( &rawtime );
+				if(!m_Image.SaveFile(wxString::Format("Media\\Pictures\\Pic_%s.png", asctime (timeinfo)), wxBITMAP_TYPE_PNG))
 				{
 					DoLog("Failed to take screenshot", MSG_ERROR);
 				}
@@ -1568,7 +1574,9 @@ void CDroneController::DrawStatus(wxDC& dc)
 	}
 	dc.DrawLabel(wxString::Format("%d %%", iBat), *pBat, m_BatteryRect, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL);
 
+    // TODO: wifi signal
 	// Wifi signal quality (sounds handled in Timer update)
+	/*
 	long lSignal = m_Wifi.GetSignalIntensity();
 	wxBitmap* pWifi = NULL;
 	if(lSignal > lWifiWarning)
@@ -1592,7 +1600,7 @@ void CDroneController::DrawStatus(wxDC& dc)
 		pWifi = &m_WifiYellowBitmap;
 	}	
 	dc.DrawLabel(wxString::Format("%d %%", lSignal), *pWifi, m_WifiRect, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL);
-	
+	*/
 	// If recording draw the Record info text
 	if(HasStatus(STATE_RECORDING))
 	{
@@ -1917,7 +1925,7 @@ bool CDroneController::RefreshGUIText()
 	// Refresh status bar if the drone is connected
 	if(HasStatus(STATE_CONNECTEDTODRONE))
 	{
-		m_pStatusBar->SetStatusText(GetText("ConnectedTo") + wxString(m_Wifi.GetNetworkName()), 1);
+		//m_pStatusBar->SetStatusText(GetText("ConnectedTo") + wxString(m_Wifi.GetNetworkName()), 1);
 		m_pStatusBar->SetStatusText(GetText("DroneVersion") + wxString::Format("%d", m_Drone.getVersion()), 2);
 	}
 
@@ -1937,9 +1945,13 @@ void CDroneController::StartPCRecording()
 
 	// Start recording on local pc
 	char filename[256];
-	SYSTEMTIME st;
-	GetLocalTime(&st);
-	sprintf(filename, "Media\\Movies\\Mov_%d%02d%02d%02d%02d%02d.avi", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
+
+	time_t rawtime;
+    struct tm * timeinfo;
+    time ( &rawtime );
+    timeinfo = localtime ( &rawtime );
+
+	sprintf(filename, "Media\\Movies\\Mov_%s.avi", asctime (timeinfo));
 
 	// Init the next frame target time (current time + 40 ms)
 	m_llNextFrameTime = m_Watch.TimeInMicro() + 40000;
@@ -2025,7 +2037,7 @@ void CDroneController::StartUSBRecording()
 {
 	DoLog("Start recording on usb");
 
-	m_Drone.startVideoRecord();
+	m_Drone.setVideoRecord(true);
 	
 	SetStatus(STATE_RECORDINGONUSB);
 }
@@ -2038,7 +2050,7 @@ void CDroneController::StopUSBRecording()
 {
 	DoLog("Stop recording on usb");
 
-	m_Drone.stopVideoRecord();
+	m_Drone.setVideoRecord(false);
 
 	ResetStatus(STATE_RECORDINGONUSB);
 }

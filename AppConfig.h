@@ -4,9 +4,8 @@
 // Utility class used to hold some configuration informations
 //////////////////////////////////////////////////////////////////////////////
 
-
-#pragma once
-
+#ifndef __HEADER_APPCONFIG__
+#define __HEADER_APPCONFIG__
 
 // Includes
 #include "wx/wx.h"
@@ -157,3 +156,5 @@ public:
 	void SetIpAddress(const wxString &strIpAddress);
 	const wxString& GetIpAddress();
 };
+
+#endif

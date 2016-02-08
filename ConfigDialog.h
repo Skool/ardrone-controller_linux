@@ -2,10 +2,11 @@
 // Configuration dialog to set application options
 //////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#ifndef __HEADER_CONFIGDIALOG__
+#define __HEADER_CONFIGDIALOG__
 
-#include "wx/wx.h"
-#include "wx/clrpicker.h"
+#include <wx/wx.h>
+#include <wx/clrpicker.h>
 
 // Declaration of the about dialog class
 class CConfigDialog : public wxDialog
@@ -47,3 +48,5 @@ class CConfigDialog : public wxDialog
 			ID_BUTTONCANCEL
 		};
 };
+
+#endif

@@ -3,7 +3,8 @@
 // screen mode, on "slow" computers
 ///////////////////////////////////////////////////////////
 
-#pragma once
+#ifndef __HEADER_SCREENMANAGER__
+#define __HEADER_SCREENMANAGER__
 
 #ifdef _WIN32
 #include <windows.h>
@@ -29,3 +30,5 @@ private:
 	// Is low resolution in use or not
 	bool			m_bIsLowRes;
 };
+
+#endif

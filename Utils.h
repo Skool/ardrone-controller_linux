@@ -2,7 +2,8 @@
 // Some utils - Definition
 /////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#ifndef __HEADER_DRONE_UTILS__
+#define __HEADER_DRONE_UTILS__
 
 #include <wx/wx.h>
 #include <wx/thread.h>
@@ -74,3 +75,5 @@ long ToLong(wxString strValue);
 
 // Convert long to string
 wxString ToString(long lValue);
+
+#endif

@@ -40,9 +40,7 @@ OBJS          = ardrone/ardrone.o \
                 Joystick.o \
                 JoystickDialog.o \
                 KeyboardDialog.o \
-                ScreenManager.o \
-                Utils.o \
-                WifiManager.o
+                Utils.o
 PROGRAM       = droneController.run
 
 $(PROGRAM):     $(OBJS)

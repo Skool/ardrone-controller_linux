@@ -2,5 +2,5 @@
 *.ipr
 *.iws
 .idea/
-
+*.run
 *.o

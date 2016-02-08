@@ -2,7 +2,9 @@
 // Autopilot declaration - Allows the drone to come back to landing point
 //////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#ifndef __HEADER_AUTOPILOT__
+#define __HEADER_AUTOPILOT__
+
 
 #include "wx/wx.h"
 #include <wx/thread.h>
@@ -102,3 +104,5 @@ private:
 	// The last longitude (X)
 	double				m_dCurrentLongitude;
 };
+
+#endif

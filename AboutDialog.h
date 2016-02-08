@@ -2,7 +2,9 @@
 // About dialog containing author, version and link to homepage
 //////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#ifndef __HEADER_ABOUT_DIALOG__
+#define __HEADER_ABOUT_DIALOG__
+
 
 #include "wx/wx.h"
 
@@ -33,3 +35,5 @@ class CAboutDialog : public wxDialog
 	private:
 		
 };
+
+#endif

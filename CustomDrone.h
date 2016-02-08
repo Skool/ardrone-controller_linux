@@ -2,7 +2,9 @@
 // Custom drone definition
 //////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#ifndef __HEADER_CUSTOMDRONE__
+#define __HEADER_CUSTOMDRONE__
+
 
 #include "AppConfig.h"	// Codecs also defined here
 #include "ardrone/ardrone.h"
@@ -62,3 +64,5 @@ public:
 	// Get current gps angle. Note: The angle is only correct when the drone is moving !!
 	double GetGpsAngle();
 };
+
+#endif

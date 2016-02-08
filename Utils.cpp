@@ -13,8 +13,13 @@ wxCriticalSection CSLock;
 /////////////////////////////////////////////////////////////////////////////
 // Load a png file from ressources
 /////////////////////////////////////////////////////////////////////////////
-bool GetPngFromRessource(const wxString& strRessourceName, wxBitmap& Bitmap)
-{	
+bool GetPngFromRessource(const wxString& strRessourceName_png, wxBitmap& Bitmap)
+{
+    // on y croit :
+    Bitmap = wxBITMAP_PNG(strRessourceName);
+    return true;
+
+    /*
 	bool			bSuccess	= false;	// Result of operation
 	char*			pData		= NULL;		// Image raw data
 	unsigned long	ulDataSize	= 0;		// Image data size
@@ -42,6 +47,7 @@ bool GetPngFromRessource(const wxString& strRessourceName, wxBitmap& Bitmap)
 	}
 
 	return bSuccess;
+	*/
 }
 
 
@@ -105,15 +111,17 @@ void DoLog(wxString strMessage, eMsgLevel MsgLevel)
 			return;	
 		}
 	}
-	
-	SYSTEMTIME st;
-	GetLocalTime(&st);
+
+	time_t rawtime;
+    struct tm * timeinfo;
+	time ( &rawtime );
+    timeinfo = localtime ( &rawtime );
 
 	switch(MsgLevel)
 	{
-		case MSG_INFO		: strType = wxString::Format("[NFO] [%02d:%02d:%02d,%03d] ", st.wHour, st.wMinute, st.wSecond, st.wMilliseconds); break;
-		case MSG_WARNING	: strType = wxString::Format("[WRN] [%02d:%02d:%02d,%03d] ", st.wHour, st.wMinute, st.wSecond, st.wMilliseconds); break;
-		default				: strType = wxString::Format("[ERR] [%02d:%02d:%02d,%03d] ", st.wHour, st.wMinute, st.wSecond, st.wMilliseconds); break;
+		case MSG_INFO		: strType = wxString::Format("[NFO] [%s] ", asctime (timeinfo)); break;
+		case MSG_WARNING	: strType = wxString::Format("[WRN] [%s] ", asctime (timeinfo)); break;
+		default				: strType = wxString::Format("[ERR] [%s] ", asctime (timeinfo)); break;
 	}
 
 	LogFile.AddLine(strType + strMessage);

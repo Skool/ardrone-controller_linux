@@ -2,14 +2,17 @@
 // Main application definition
 /////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#ifndef __HEADER_DRONECONTROLLER__
+#define __HEADER_DRONECONTROLLER__
 
-#include "wx/wx.h"
+
+#include <wx/wx.h>
 #include <wx/thread.h>
 #include <wx/sound.h>
 #include <wx/stopwatch.h>
 // To simulate mouse move
 #include <wx/uiaction.h>
+#include <time.h>
 
 // Test: try to veto sleep
 #ifdef wxHAS_POWER_EVENTS
@@ -18,8 +21,8 @@
 
 #include "CustomDrone.h"
 #include "Input.h"
-#include "ScreenManager.h"
-#include "WifiManager.h"
+//#include "ScreenManager.h"
+//#include "WifiManager.h"
 #include "AutoPilot.h"
 #include "Ressources.h"
 
@@ -157,7 +160,7 @@ private:
 	// The drone instance
 	CCustomDrone		m_Drone;
 	// Wifi manager
-	CWifiManager		m_Wifi;
+	//CWifiManager		m_Wifi;
 	// Timer to update wifi status and control sounds
 	wxTimer				m_Timer;
 	// Simulator for mouse moves
@@ -243,10 +246,11 @@ private:
 	CAutoPilot			m_AutoPilot;
 
 	// Manages screen resolution
-	CScreenManager		m_ScreenManager;
+	//CScreenManager		m_ScreenManager;
 
 private:
     DECLARE_EVENT_TABLE()	
 };
 
 
+#endif

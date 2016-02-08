@@ -2,10 +2,12 @@
 // Manage Joystick
 /////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#ifndef __HEADER_JOYSTICK__
+#define __HEADER_JOYSTICK__
 
-#include "wx/wx.h"
+#include <wx/wx.h>
 #include <wx/joystick.h>
+#include "Ressources.h"
 
 
 // Enumeration of joystick axis
@@ -50,3 +52,5 @@ private:
 	// The name of the Joystick configuration file depends on Manufacturer and model
 	wxString			m_strConfigFileName;
 };
+
+#endif

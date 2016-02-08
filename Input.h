@@ -2,9 +2,11 @@
 // Manage input : Handles all key states and joystick positions
 /////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#ifndef __HEADER_INPUT__
+#define __HEADER_INPUT__
 
-#include "wx/wx.h"
+
+#include <wx/wx.h>
 #include "InputDirection.h"
 
 // Enum for observed keys
@@ -154,3 +156,5 @@ private:
 	// Critical section to protect data (set from one thread, read from another)
 	wxCriticalSection	m_CSInput;
 };
+
+#endif

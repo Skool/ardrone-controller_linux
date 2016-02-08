@@ -2,7 +2,8 @@
 // Manages wifi connections
 ///////////////////////////////////////////////////////////
 
-#pragma once
+#ifndef __HEADER_WIFIMANAGER__
+#define __HEADER_WIFIMANAGER__
 
 #ifdef _WIN32
 #include <windows.h>
@@ -57,3 +58,5 @@ private:
 	PWLAN_INTERFACE_INFO_LIST		m_pInterfaceList;
 	PWLAN_AVAILABLE_NETWORK_LIST	m_pNetworkList;
 };
+
+#endif

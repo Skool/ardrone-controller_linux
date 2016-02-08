@@ -2,9 +2,10 @@
 // Configuration dialog for joysticks
 //////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#ifndef __HEADER_JOYSTICKDIALOG__
+#define __HEADER_JOYSTICKDIALOG__
 
-#include "wx/wx.h"
+#include <wx/wx.h>
 
 #include "Input.h"
 
@@ -58,3 +59,5 @@ class CJoystickDialog : public wxDialog
 			TIMER_UPDATE
 		};	
 };
+
+#endif

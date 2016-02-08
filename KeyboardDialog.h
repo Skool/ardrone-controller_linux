@@ -2,9 +2,10 @@
 // Configuration dialog for keyboard input
 //////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#ifndef __HEADER_KEYBOARDDIALOG__
+#define __HEADER_KEYBOARDDIALOG__
 
-#include "wx/wx.h"
+#include <wx/wx.h>
 
 #include "Input.h"
 
@@ -56,3 +57,5 @@ class CKeyboardDialog : public wxDialog
 			ID_BUTTONCANCEL		
 		};
 };
+
+#endif
