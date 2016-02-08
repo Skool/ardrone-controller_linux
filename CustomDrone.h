@@ -5,7 +5,7 @@
 #pragma once
 
 #include "AppConfig.h"	// Codecs also defined here
-#include "ardrone.h"
+#include "ardrone/ardrone.h"
 
 // Our drone inherits from the default drone class
 class CCustomDrone : public ARDrone

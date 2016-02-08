@@ -8,17 +8,17 @@
 // Define our main icon
 #define IcoMain_xpm         "Ressources/Main.ico"
 // Other icons
-#define IcoConnect          "Ressources/DroneConnect.ico"
-#define IcoDisconnect       "Ressources/DroneDisconnect.ico"
-#define IcoEmergency        "Ressources/DroneEmergency.ico"
-#define IcoTrim             "Ressources/DroneTrim.ico"
-#define IcoTakeOff          "Ressources/DroneTakeOff.ico"
-#define IcoRecord           "Ressources/DroneRecord.ico"
-#define IcoScreenshot       "Ressources/DroneScreenshot.ico"
-#define IcoFullscreen       "Ressources/DroneFullscreen.ico"
-#define IcoCamera           "Ressources/DroneCamera.ico"
-#define IcoHome             "Ressources/DroneHome.ico"
-#define IcoHomeReset        "Ressources/DroneHomeReset.ico"
+#define IcoConnect_xpm      "Ressources/DroneConnect.ico"
+#define IcoDisconnect_xpm   "Ressources/DroneDisconnect.ico"
+#define IcoEmergency_xpm    "Ressources/DroneEmergency.ico"
+#define IcoTrim_xpm         "Ressources/DroneTrim.ico"
+#define IcoTakeOff_xpm      "Ressources/DroneTakeOff.ico"
+#define IcoRecord_xpm       "Ressources/DroneRecord.ico"
+#define IcoScreenshot_xpm   "Ressources/DroneScreenshot.ico"
+#define IcoFullscreen_xpm   "Ressources/DroneFullscreen.ico"
+#define IcoCamera_xpm       "Ressources/DroneCamera.ico"
+#define IcoHome_xpm         "Ressources/DroneHome.ico"
+#define IcoHomeReset_xpm    "Ressources/DroneHomeReset.ico"
 
 // Sound files
 #define WavBeep             "Ressources/Beep.wav"

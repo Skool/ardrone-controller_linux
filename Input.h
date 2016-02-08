@@ -8,7 +8,7 @@
 #include "InputDirection.h"
 
 // Enum for observed keys
-enum eKey:unsigned __int16
+enum eKey
 {
 	KEY_NONE			= 0,
 	KEY_EMERGENCY		= 1,

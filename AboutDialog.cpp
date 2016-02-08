@@ -57,7 +57,9 @@ CAboutDialog::CAboutDialog(wxWindow *parent)
 	// Create link to the homepage
 	wxHyperlinkCtrl* pLink1 = new wxHyperlinkCtrl(this, wxID_ANY, wxT("http://miniapps.free.fr/"), wxT("http://miniapps.free.fr"), wxDefaultPosition, wxDefaultSize, wxNO_BORDER | wxHL_CONTEXTMENU);
 	pLink1->SetNormalColour(ColorBlue);
-	pLink1->SetFont(wxFont(wxSize(6,13), wxSWISS, wxNORMAL, wxNORMAL, true, wxT("MS Sans Serif")));	
+	// TODO: check here
+	//pLink1->SetFont(wxFont(wxSize(6,13), wxSWISS, wxNORMAL, wxNORMAL, true, wxT("MS Sans Serif"))));
+    pLink1->SetFont(FontNormal10);
 
 	pMainSizer->Add(pLink1, 0, wxALIGN_CENTER_HORIZONTAL | wxALL, 10);
 

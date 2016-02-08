@@ -1,5 +1,5 @@
 CXX           = g++
-CXXFLAGS      = -O2 -Wall -D__STDC_CONSTANT_MACROS `wx-config --cxxflags --libs`
+CXXFLAGS      = -w -O2 -Wall -D__STDC_CONSTANT_MACROS `wx-config --cxxflags --libs`
 LIBS          = -lm                     \
                 -lpthread               \
                 -lavutil                \

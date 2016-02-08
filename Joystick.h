@@ -9,7 +9,7 @@
 
 
 // Enumeration of joystick axis
-enum eJoystickAxis:unsigned __int16
+enum eJoystickAxis
 {
 	AXIS_NONE			= 0,
 	AXIS_X				= 1,

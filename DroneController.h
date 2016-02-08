@@ -21,6 +21,7 @@
 #include "ScreenManager.h"
 #include "WifiManager.h"
 #include "AutoPilot.h"
+#include "Ressources.h"
 
 // Global flag, if debug informations should be displayed
 bool g_bDebug = false;

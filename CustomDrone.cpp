@@ -5,7 +5,6 @@
 #include "Utils.h"
 #include "CustomDrone.h"
 
-
 /////////////////////////////////////////////////////////////////////////////
 // Constructor
 /////////////////////////////////////////////////////////////////////////////
@@ -28,9 +27,9 @@ CCustomDrone::~CCustomDrone()
 bool CCustomDrone::HasError()
 {
 	// Get state
-	LockNavdata();
+	if (mutexCommand) pthread_mutex_lock(mutexNavdata);
 	unsigned int uiState =navdata.ardrone_state;
-	UnlockNavdata();
+    if (mutexCommand) pthread_mutex_unlock(mutexNavdata);
 
 	// Check for errors
 	if( (uiState & ARDRONE_MOTORS_MASK)			||
@@ -55,9 +54,9 @@ bool CCustomDrone::HasError()
 wxString CCustomDrone::GetErrorText()
 {
 	// Get state
-	LockNavdata();
-	unsigned int uiState = navdata.ardrone_state;
-	UnlockNavdata();
+	if (mutexCommand) pthread_mutex_lock(mutexNavdata);
+	unsigned int uiState =navdata.ardrone_state;
+    if (mutexCommand) pthread_mutex_unlock(mutexNavdata);
 
 	wxString strError = "";
 
@@ -113,9 +112,9 @@ bool CCustomDrone::HasUsbKey()
 	// ArDrone 1 don't have usb
 	if( version.major == ARDRONE_VERSION_2 )
 	{
-		LockNavdata();		
+		if (mutexCommand) pthread_mutex_lock(mutexNavdata);
 		bHasUsb = ( (navdata.ardrone_state & ARDRONE_USB_MASK) && (navdata.hdvideo_stream.usbkey_freespace > 10000) && (navdata.hdvideo_stream.usbkey_remaining_time > 120 ) );
-		UnlockNavdata();
+		if (mutexCommand) pthread_mutex_unlock(mutexNavdata);
 	}
 
 	return bHasUsb;
@@ -129,10 +128,10 @@ void CCustomDrone::Trim(void)
 {
 	if (onGround())
 	{
-		LockCommand();
+		if (mutexCommand) pthread_mutex_lock(mutexCommand);;
 		sockCommand.sendf("AT*FTRIM=%d,\r", seq++);
-		UnlockCommand();
-		Sleep(100);
+		if (mutexCommand) pthread_mutex_unlock(mutexCommand);;
+		msleep(100);
 	}
 }
 
@@ -144,9 +143,9 @@ void CCustomDrone::Calibrate(int iDevice)
 {	
     if (!onGround())
 	{
-        LockCommand();
+        if (mutexCommand) pthread_mutex_lock(mutexCommand);;
         sockCommand.sendf("AT*CALIB=%d,%d\r", seq++, iDevice);
-        UnlockCommand();
+        if (mutexCommand) pthread_mutex_unlock(mutexCommand);;
     }
 }
 
@@ -157,9 +156,9 @@ void CCustomDrone::Calibrate(int iDevice)
 //////////////////////////////////////////////////////////////////////////////
 double CCustomDrone::getRollDeg(void)
 {
-	LockNavdata();
+	if (mutexCommand) pthread_mutex_lock(mutexNavdata);
     double dRoll = navdata.demo.phi * 0.001;
-	UnlockNavdata();
+	if (mutexCommand) pthread_mutex_unlock(mutexNavdata);
 
 	return dRoll;
 }
@@ -171,9 +170,9 @@ double CCustomDrone::getRollDeg(void)
 //////////////////////////////////////////////////////////////////////////////
 double CCustomDrone::getPitchDeg(void)
 {
-	LockNavdata();
+	if (mutexCommand) pthread_mutex_lock(mutexNavdata);
     double dPitch = navdata.demo.theta * 0.001;
-	UnlockNavdata();
+	if (mutexCommand) pthread_mutex_unlock(mutexNavdata);
 
 	return dPitch;
 }
@@ -185,11 +184,11 @@ double CCustomDrone::getPitchDeg(void)
 //////////////////////////////////////////////////////////////////////////////
 double CCustomDrone::getYawDeg(void)
 {
-	LockNavdata();
+	if (mutexCommand) pthread_mutex_lock(mutexNavdata);
     double dYaw = navdata.demo.psi * 0.001;
-	UnlockNavdata();
+	if (mutexCommand) pthread_mutex_unlock(mutexNavdata);
 
-	// We dont wont negative values but values from 0° to 360°
+	// We dont wont negative values but values from 0ï¿½ to 360ï¿½
 	if(dYaw < 0.0f)
 	{
 		dYaw += 360.0f;
@@ -205,9 +204,9 @@ double CCustomDrone::getYawDeg(void)
 //////////////////////////////////////////////////////////////////////////////
 double CCustomDrone::GetHorizontalVelocity()
 {
-	LockNavdata();
+	if (mutexCommand) pthread_mutex_lock(mutexNavdata);
 	double dVelocity = (sqrt( (navdata.demo.vx*navdata.demo.vx) + (navdata.demo.vy*navdata.demo.vy) ) * 0.001f);
-	UnlockNavdata();
+	if (mutexCommand) pthread_mutex_unlock(mutexNavdata);
 
 	return dVelocity;
 }
@@ -218,10 +217,10 @@ double CCustomDrone::GetHorizontalVelocity()
 //////////////////////////////////////////////////////////////////////////////
 void CCustomDrone::GetHorizontalVelocity(double& dX, double& dY)
 {
-	LockNavdata();
+	if (mutexCommand) pthread_mutex_lock(mutexNavdata);
 	dX = (double)navdata.demo.vx * 0.001f;
 	dY = (double)navdata.demo.vy * 0.001f;
-	UnlockNavdata();
+	if (mutexCommand) pthread_mutex_unlock(mutexNavdata);
 }
 
 
@@ -235,21 +234,22 @@ void CCustomDrone::SetVideoCodec(eVideoCodec VideoCodec)
         // Finalize video
         finalizeVideo();
 
-		LockCommand();
+		if (mutexCommand) pthread_mutex_lock(mutexCommand);;
 
         // Output video with selected codec
         sockCommand.sendf("AT*CONFIG_IDS=%d,\"%s\",\"%s\",\"%s\"\r", seq++, ARDRONE_SESSION_ID, ARDRONE_PROFILE_ID, ARDRONE_APPLOCATION_ID);
         sockCommand.sendf("AT*CONFIG=%d,\"video:video_codec\",\"%d\"\r", seq++, VideoCodec);
         
-		UnlockCommand();
+		if (mutexCommand) pthread_mutex_unlock(mutexCommand);;
 		
-		Sleep(100);
+		msleep(100);
 
         // Initialize video
 		if(0 == initVideo())
 		{
 			DoLog("Failed to restart video after codec change, watchdog should catch this", MSG_ERROR);
-			bNeedVideoRestart = true;
+			// TODO: change watchdog way
+			//bNeedVideoRestart = true;
 		}
     }
 }
@@ -273,12 +273,12 @@ void CCustomDrone::SetMaxAltitude(long lMaxAltitude)
 
 	DoLog(wxString::Format("Set max altitude to %d m (%d mm)", lMaxAltitude/1000, lMaxAltitude));
 
-	LockCommand();
+	if (mutexCommand) pthread_mutex_lock(mutexCommand);;
 	sockCommand.sendf("AT*CONFIG_IDS=%d,\"%s\",\"%s\",\"%s\"\r", seq++, ARDRONE_SESSION_ID, ARDRONE_PROFILE_ID, ARDRONE_APPLOCATION_ID);
 	sockCommand.sendf("AT*CONFIG=%d,\"control:altitude_max\",\"%d\"\r",  seq++, lMaxAltitude);
-	UnlockCommand();
+	if (mutexCommand) pthread_mutex_unlock(mutexCommand);;
 
-	Sleep(100);
+	msleep(100);
 }
 
 
@@ -293,9 +293,9 @@ void CCustomDrone::CustomMove(float fX, float fY, float fZ, float fR)
 	// Invert only Y axis
 	fY = -fY;
 
-	LockCommand();
+	if (mutexCommand) pthread_mutex_lock(mutexCommand);;
 	sockCommand.sendf("AT*PCMD=%d,%d,%d,%d,%d,%d\r", seq++, iMode, *(int*)(&fX), *(int*)(&fY), *(int*)(&fZ), *(int*)(&fR));
-	UnlockCommand();
+	if (mutexCommand) pthread_mutex_unlock(mutexCommand);;
 }
 
 
@@ -307,9 +307,9 @@ unsigned int CCustomDrone::GetWifiSignal()
 {
 	unsigned int uiWifi = 0;
 
-	LockNavdata();
+	if (mutexCommand) pthread_mutex_lock(mutexNavdata);
 	uiWifi = navdata.wifi.link_quality;
-	UnlockNavdata();
+	if (mutexCommand) pthread_mutex_unlock(mutexNavdata);
 
 	return uiWifi;
 }
@@ -322,11 +322,11 @@ bool CCustomDrone::HasGps()
 {
 	bool bHasGps = false;
 	
-	LockNavdata();
+	if (mutexCommand) pthread_mutex_lock(mutexNavdata);
 
 	bHasGps = (navdata.gps.gps_plugged != 0);
 
-	UnlockNavdata();
+	if (mutexCommand) pthread_mutex_unlock(mutexNavdata);
 
 	return bHasGps;
 }
@@ -337,10 +337,10 @@ bool CCustomDrone::HasGps()
 /////////////////////////////////////////////////////////////////////////////
 void CCustomDrone::GetGpsPosition(double& dLat, double& dLong)
 {
-	LockNavdata();
+	if (mutexCommand) pthread_mutex_lock(mutexNavdata);
 	dLat = navdata.gps.lat;
 	dLong = navdata.gps.lon;
-	UnlockNavdata();
+	if (mutexCommand) pthread_mutex_unlock(mutexNavdata);
 }
 
 
@@ -351,9 +351,9 @@ double CCustomDrone::GetGpsAngle()
 {
 	double dDegree = 0.0f;
 	
-	LockNavdata();
+	if (mutexCommand) pthread_mutex_lock(mutexNavdata);
 	dDegree = navdata.gps.degree;
-	UnlockNavdata();
+	if (mutexCommand) pthread_mutex_unlock(mutexNavdata);
 
 	return dDegree;
 }

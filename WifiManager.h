@@ -4,8 +4,10 @@
 
 #pragma once
 
+#ifdef _WIN32
 #include <windows.h>
 #include <wlanapi.h>
+#endif
 
 // Possible errors using the wifi api
 enum eWifiErrors

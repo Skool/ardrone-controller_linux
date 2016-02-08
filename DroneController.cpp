@@ -634,7 +634,7 @@ void CDroneController::StartRecord()
 					break;
 				case 2:		// USB + PC
 					StartUSBRecording();
-					Sleep(100);
+					msleep(100);
 					StartPCRecording();
 					break;
 				default:	// USB
@@ -1361,7 +1361,7 @@ wxThread::ExitCode CDroneController::Entry()
 		DoRender();
 
 		// Let the system responsive
-		m_thread->Sleep(1);
+		m_thread->msleep(1);
 	}
 
 	DoLog("Main frame thread stopped");

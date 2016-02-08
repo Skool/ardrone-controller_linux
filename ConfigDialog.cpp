@@ -6,6 +6,7 @@
 
 #include "Utils.h"
 #include "AppConfig.h"
+#include "Ressources.h"
 
 BEGIN_EVENT_TABLE(CConfigDialog, wxDialog)
 	EVT_CLOSE(CConfigDialog::OnClose)
