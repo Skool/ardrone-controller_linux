@@ -107,6 +107,7 @@ void CInput::SetLimits(double dSpeedLimit, double dAccelerationLimit)
 /////////////////////////////////////////////////////////////////////////////
 void CInput::Update(long lTimeNew)
 {
+
 	wxCriticalSectionLocker Lock(m_CSInput);
 
 	long lTimediff	= lTimeNew-m_lTime;
@@ -129,7 +130,7 @@ void CInput::Update(long lTimeNew)
 
 	// *Note*: Special keys have a double check, so if the user press a key, the action will only be done
 	// one time, even if the key stay pressed down.
-
+    DoLog("On Input update 1");
 	// Emergency
 	if( wxGetKeyState(m_kEmergency) || IsJoystickButtonPressed(KEY_EMERGENCY) )
 	{
@@ -143,7 +144,7 @@ void CInput::Update(long lTimeNew)
 	{
 		ResetKey(KEY_EMERGENCY);
 	}
-	
+	DoLog("On Input update 4");
 	// Fullscreen
 	if( wxGetKeyState(m_kFullscreen) || IsJoystickButtonPressed(KEY_FULLSCREEN) )
 	{
@@ -366,7 +367,7 @@ bool CInput::LoadFromFile(eInputFileType FileType)
 	if(FileType & FILE_KEYBOARD)
 	{
 		// Text file containing the Keyboard configuration
-		wxTextFile KeyboardFile("Data\\Config\\Keyboard.ini");
+		wxTextFile KeyboardFile("Data/Config/Keyboard.ini");
 	
 		// Verify if the file exist
 		if(KeyboardFile.Exists())
@@ -402,7 +403,7 @@ bool CInput::LoadFromFile(eInputFileType FileType)
 	if((FileType & FILE_JOYSTICK) && HasJoystick())
 	{
 		// The text file containing the joystick configuration
-		wxTextFile JoystickFile("Data\\Config\\" + m_pJoystick->GetConfigFileName());
+		wxTextFile JoystickFile("Data/Config/" + m_pJoystick->GetConfigFileName());
 		// Verify if the file exist
 		if(JoystickFile.Exists())
 		{
@@ -462,7 +463,7 @@ bool CInput::SaveToFile(eInputFileType FileType)
 	if(FILE_KEYBOARD == FileType)
 	{
 		// Text file containing the Keyboard configuration
-		wxTextFile KeyboardFile("Data\\Config\\Keyboard.ini");
+		wxTextFile KeyboardFile("Data/Config/Keyboard.ini");
 	
 		// Verify if the file exist
 		if(KeyboardFile.Exists())
@@ -506,7 +507,7 @@ bool CInput::SaveToFile(eInputFileType FileType)
 	else if((FILE_JOYSTICK == FileType) && HasJoystick())
 	{
 		// Text file containing the Keyboard configuration
-		wxTextFile JoystickFile("Data\\Config\\" + m_pJoystick->GetConfigFileName());
+		wxTextFile JoystickFile("Data/Config/" + m_pJoystick->GetConfigFileName());
 	
 		// Verify if the file exist
 		if(JoystickFile.Exists())
@@ -566,7 +567,7 @@ bool CInput::SaveToFile(eInputFileType FileType)
 /////////////////////////////////////////////////////////////////////////////
 void CInput::RefreshLayout()
 {
-	if(::wxFileExists("Data\\Config\\Keyboard.ini"))
+	if(::wxFileExists("Data/Config/Keyboard.ini"))
 	{
 		return;
 	}

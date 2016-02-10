@@ -55,24 +55,24 @@ bool CMainApp::OnInit()
 	}
 
 	// Save up to 2 log files
-	if(wxFileExists("Data\\Log\\Errors2.log"))
+	if(wxFileExists("Data/Log/Errors2.log"))
 	{
-		wxRemoveFile("Data\\Log\\Errors2.log");
+		wxRemoveFile("Data/Log/Errors2.log");
 	}
-	if(wxFileExists("Data\\Log\\Errors1.log"))
+	if(wxFileExists("Data/Log/Errors1.log"))
 	{
-		wxRenameFile("Data\\Log\\Errors1.log", "Data\\Log\\Errors2.log");
+		wxRenameFile("Data/Log/Errors1.log", "Data/Log/Errors2.log");
 	}
-	if(wxFileExists("Data\\Log\\Errors.log"))
+	if(wxFileExists("Data/Log/Errors.log"))
 	{
-		wxRenameFile("Data\\Log\\Errors.log", "Data\\Log\\Errors1.log");
+		wxRenameFile("Data/Log/Errors.log", "Data/Log/Errors1.log");
 	}
 
 	DoLog("--------------------------------------------------------------");	
 	DoLog(VersionString);
 	DoLog(wxString::Format("OS: %s", wxGetOsDescription()));
 	DoLog(wxNow());
-	DoLog("--------------------------------------------------------------");	
+	DoLog("--------------------------------------------------------------");
 
 	// Load config and language
 	CConfig* pConfig = CConfig::GetSingleton();
@@ -351,7 +351,8 @@ CDroneController::CDroneController(const wxString& title) : wxFrame(NULL, wxID_A
 	m_WifiRect			= wxRect(10,60,32,32);
 	m_RecordRect		= wxRect(10,110,32,32);
 	m_HomeRect			= wxRect(10,160,32,32);
-	
+
+#ifdef _WIN32
 	// Create sounds from ressource
 	m_pBeep = new wxSound();
 	if(!m_pBeep->Create("WavBeep", true))
@@ -368,7 +369,7 @@ CDroneController::CDroneController(const wxString& title) : wxFrame(NULL, wxID_A
 		delete m_pBeeps;
 		m_pBeeps = NULL;
 	}	
-
+#endif
 	// Display the dialog
 	this->CenterOnScreen();
 	Show();
@@ -1476,7 +1477,7 @@ bool CDroneController::DoRender()
                 struct tm * timeinfo;
 				time ( &rawtime );
                 timeinfo = localtime ( &rawtime );
-				if(!m_Image.SaveFile(wxString::Format("Media\\Pictures\\Pic_%s.png", asctime (timeinfo)), wxBITMAP_TYPE_PNG))
+				if(!m_Image.SaveFile(wxString::Format("Media/Pictures/Pic_%s.png", asctime (timeinfo)), wxBITMAP_TYPE_PNG))
 				{
 					DoLog("Failed to take screenshot", MSG_ERROR);
 				}
@@ -1951,7 +1952,7 @@ void CDroneController::StartPCRecording()
     time ( &rawtime );
     timeinfo = localtime ( &rawtime );
 
-	sprintf(filename, "Media\\Movies\\Mov_%s.avi", asctime (timeinfo));
+	sprintf(filename, "Media/Movies/Mov_%s.avi", asctime (timeinfo));
 
 	// Init the next frame target time (current time + 40 ms)
 	m_llNextFrameTime = m_Watch.TimeInMicro() + 40000;

@@ -92,7 +92,7 @@ void DoLog(wxString strMessage, eMsgLevel MsgLevel)
 	wxString strType;
 	
 	// Text file containing the device config
-	wxTextFile LogFile("Data\\Log\\Errors.log");
+	wxTextFile LogFile("Data/Log/Errors.log");
 	
     // Verify if the file exist
 	if(LogFile.Exists())
@@ -116,12 +116,14 @@ void DoLog(wxString strMessage, eMsgLevel MsgLevel)
     struct tm * timeinfo;
 	time ( &rawtime );
     timeinfo = localtime ( &rawtime );
+    char *asct = asctime (timeinfo);
+    strip(asct);
 
 	switch(MsgLevel)
 	{
-		case MSG_INFO		: strType = wxString::Format("[NFO] [%s] ", asctime (timeinfo)); break;
-		case MSG_WARNING	: strType = wxString::Format("[WRN] [%s] ", asctime (timeinfo)); break;
-		default				: strType = wxString::Format("[ERR] [%s] ", asctime (timeinfo)); break;
+		case MSG_INFO		: strType = wxString::Format("[NFO] [%s] ", asct); break;
+		case MSG_WARNING	: strType = wxString::Format("[WRN] [%s] ", asct); break;
+		default				: strType = wxString::Format("[ERR] [%s] ", asct); break;
 	}
 
 	LogFile.AddLine(strType + strMessage);
@@ -130,6 +132,18 @@ void DoLog(wxString strMessage, eMsgLevel MsgLevel)
 	LogFile.Write();
     // Close the file
     LogFile.Close();
+}
+
+void strip(char *s) {
+    char *p2 = s;
+    while(*s != '\0') {
+    	if(*s != '\t' && *s != '\n') {
+    		*p2++ = *s++;
+    	} else {
+    		++s;
+    	}
+    }
+    *p2 = '\0';
 }
 
 

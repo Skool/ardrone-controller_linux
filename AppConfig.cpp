@@ -53,21 +53,21 @@ bool CConfig::CheckConfig()
     }
     
     // The language directory must exist
-    if(!wxDirExists("Data\\Lang"))
+    if(!wxDirExists("Data/Lang"))
     {
 		return false;
 	}
 
-	// Directory for configuration files
-    if(!wxDirExists("Data\\Config"))
+	// Directory or configuration files
+    if(!wxDirExists("Data/Config"))
     {
         return false;
     }
     
     // Directory for Log files
-    if(!wxDirExists("Data\\Log"))
+    if(!wxDirExists("Data/Log"))
     {
-        if(!wxMkdir("Data\\Log"))
+        if(!wxMkdir("Data/Log"))
         {
             return false;
         }
@@ -82,17 +82,17 @@ bool CConfig::CheckConfig()
         }
     }
 
-	if(!wxDirExists("Media\\Pictures"))
+	if(!wxDirExists("Media/Pictures"))
     {
-        if(!wxMkdir("Media\\Pictures"))
+        if(!wxMkdir("Media/Pictures"))
         {
             return false;
         }
     }
 
-	if(!wxDirExists("Media\\Movies"))
+	if(!wxDirExists("Media/Movies"))
     {
-        if(!wxMkdir("Media\\Movies"))
+        if(!wxMkdir("Media/Movies"))
         {
             return false;
         }
@@ -432,7 +432,7 @@ const wxString& CConfig::GetIpAddress()
 bool CConfig::LoadConfig()
 {
 	// Text file containing the config
-	wxTextFile ConfigFile("Data\\Config\\Config.ini");
+	wxTextFile ConfigFile("Data/Config/Config.ini");
 	
     // Verify if the file exist
 	if(ConfigFile.Exists())
@@ -527,7 +527,7 @@ bool CConfig::LoadConfig()
 bool CConfig::SaveConfig()
 {
 	// Text file containing the config
-	wxTextFile ConfigFile("Data\\Config\\Config.ini");
+	wxTextFile ConfigFile("Data/Config/Config.ini");
 	
     // Verify if the file exist
 	if(ConfigFile.Exists())
@@ -609,7 +609,7 @@ bool CConfig::GetPossibleLanguages(wxArrayString *parLanguages)
 	parLanguages->Clear();
 		
 	// Open the dir to iterate over language files
-	if(!MyDir.Open("Data\\Lang"))
+	if(!MyDir.Open("Data/Lang"))
 	{
 		return false;
 	}
@@ -671,7 +671,7 @@ bool CConfig::LoadLanguage(const wxString& strLanguage)
 	bool bRet = true;
 	
 	// Text file containing the language strings
-	wxTextFile LangFile("Data\\Lang\\" + strLanguage + ".lng");
+	wxTextFile LangFile("Data/Lang/" + strLanguage + ".lng");
 	
     // Verify if the file exist
 	if(!LangFile.Exists())

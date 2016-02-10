@@ -8,7 +8,7 @@
 #define __HEADER_APPCONFIG__
 
 // Includes
-#include "wx/wx.h"
+#include <wx/wx.h>
 #include <wx/string.h>
 #include <wx/dir.h>
 #include <wx/arrstr.h>

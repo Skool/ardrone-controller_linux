@@ -36,10 +36,10 @@ const wxColor ColorGreenLite(0,180,0);		// Ok buttons
 const wxColor ColorBlueLite(0,0,180);		// Text color in dialogs
 
 // Define some fonts
-const wxFont FontBold12(12, wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD);
-const wxFont FontBold18(18, wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL);
-const wxFont FontNormal10(10, wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL);
-const wxFont FontNormal8(8, wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL);
+const wxFont FontBold12(12, wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD, false, wxT("Noto Sans"));
+const wxFont FontBold18(18, wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL, false, wxT("Noto Sans"));
+const wxFont FontNormal10(10, wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL, false, wxT("Noto Sans"));
+const wxFont FontNormal8(8, wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL, false, wxT("Noto Sans"));
 
 // Calculate pi over 180 (used for trigonometry operations -> degree to radian)
 const double dPIover180 = (3.14159265358979323846264338327/180.0);
@@ -66,6 +66,9 @@ void DoMessage(wxString strMessage, eMsgLevel MsgLevel);
 
 // Log to file
 void DoLog(wxString strMessage, eMsgLevel MsgLevel = MSG_INFO);
+
+// Stripe \n
+void strip(char* s);
 
 // Get a text in current language
 wxString GetText(wxString strKey);
